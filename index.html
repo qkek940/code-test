@@ -303,6 +303,12 @@ textarea{min-height:64px;resize:vertical;line-height:1.5;}
 
 </div>
 <script>
+// ── 단독 실행용 설정 ──────────────────────────────────────────────
+// 아래 따옴표 안에 본인 Gemini API 키를 넣으면 index.html 하나로 동작합니다.
+// (config.js 파일이 같은 폴더에 있으면 그 값이 우선 적용됩니다.)
+const EMBEDDED_GEMINI_KEY = "YOUR_GEMINI_API_KEY";
+const EMBEDDED_GEMINI_MODEL = "gemini-2.5-flash";
+
 const PICTOS = ['인화성','산화성','폭발성','고압가스','부식성','급성독성','감탄부호','건강유해성','환경유해성'];
 const EXT_COLOR = {pdf:'#b3261e',xls:'#15803d',xlsx:'#15803d',doc:'#1d4ed8',docx:'#1d4ed8',ppt:'#c2410c',pptx:'#c2410c'};
 
@@ -684,10 +690,12 @@ async function extractFromMSDS(){
     set({started:true,extractResult:{ok:false,error:'로컬 파일(file://)로 열면 브라우저가 외부 API 호출을 차단합니다. 동봉한 실행 스크립트(Mac: run-mac.command / Windows: run-windows.bat)를 더블클릭하거나, 터미널에서 "python3 -m http.server 8000" 실행 후 http://localhost:8000/index.html 로 여세요.'}});
     return;
   }
-  const key=window.GEMINI_API_KEY;
-  const model=window.GEMINI_MODEL||'gemini-2.5-flash';
-  if(!key||key==='YOUR_GEMINI_API_KEY'){
-    set({started:true,extractResult:{ok:false,error:'config.js에 GEMINI_API_KEY가 설정되지 않았습니다. config.example.js를 복사해 config.js를 만들고 키를 넣으세요.'}});
+  const cfgKey=window.GEMINI_API_KEY;
+  const key=(cfgKey&&cfgKey!=='YOUR_GEMINI_API_KEY')?cfgKey
+            :(EMBEDDED_GEMINI_KEY!=='YOUR_GEMINI_API_KEY'?EMBEDDED_GEMINI_KEY:'');
+  const model=window.GEMINI_MODEL||EMBEDDED_GEMINI_MODEL||'gemini-2.5-flash';
+  if(!key){
+    set({started:true,extractResult:{ok:false,error:'Gemini API 키가 설정되지 않았습니다. index.html 상단 EMBEDDED_GEMINI_KEY 에 키를 넣거나, 같은 폴더에 config.js(window.GEMINI_API_KEY)를 두세요.'}});
     return;
   }
   const pdfs=st.files.filter(f=>f.ext==='pdf'&&f.obj);
