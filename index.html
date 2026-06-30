@@ -678,7 +678,7 @@ const EXTRACT_INSTRUCTION =
 - firstaid: 응급조치요령(4항, 눈/피부/흡입/먹었을때). spill: 사고 시 대처방법(6항, 누출).
 - hPhrase: 유해·위험 문구(H문구, 코드+설명). pPhrase: 예방조치 문구(P문구, 대표 항목).
 - supplier: 공급자 정보(회사명·주소·연락처·긴급연락처).
-긴 항목은 핵심을 간결히 요약한다.`;
+각 항목은 핵심만 2~3줄 이내로 간결히 요약한다. 원문을 길게 그대로 옮기지 말 것.`;
 
 function fileToBase64(file){
   return new Promise((res,rej)=>{
@@ -716,7 +716,7 @@ async function extractFromMSDS(){
     }
     const body={contents:[{role:'user',parts}],generationConfig:{
       responseMimeType:'application/json',responseSchema:EXTRACT_SCHEMA,
-      temperature:0,maxOutputTokens:4096,thinkingConfig:{thinkingBudget:0}}};
+      temperature:0,maxOutputTokens:8192,thinkingConfig:{thinkingBudget:0}}};
     const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
       {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!resp.ok){
@@ -740,7 +740,18 @@ async function extractFromMSDS(){
     catch(e){
       const m=txt.match(/\{[\s\S]*\}/);
       if(m){ try{ex=JSON.parse(m[0]);}catch(e2){} }
-      if(!ex) throw new Error('AI 응답(JSON) 해석 실패: '+txt.slice(0,140));
+    }
+    if(!ex){
+      // 응답이 잘렸어도(truncated) 완성된 "키":"값" 쌍은 살려서 채운다.
+      ex={};
+      const re=/"(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g; let mm;
+      while((mm=re.exec(txt))){ try{ex[mm[1]]=JSON.parse('"'+mm[2]+'"');}catch(_){ex[mm[1]]=mm[2];} }
+      const pm=txt.match(/"pictos"\s*:\s*\[([^\]]*)\]/);
+      if(pm){ ex.pictos=(pm[1].match(/"([^"]+)"/g)||[]).map(s=>s.replace(/"/g,'')); }
+      if(!Object.keys(ex).length){
+        const fr=(cand&&cand.finishReason)||'?';
+        throw new Error('AI 응답(JSON) 해석 실패 (종료사유: '+fr+', 길이 '+txt.length+'). 다시 시도해 주세요.');
+      }
     }
 
     // 비어 있는 항목만 채운다 (사용자가 직접 입력한 값은 보존).
