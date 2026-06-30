@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // MSDS 양식 프롬프트 빌더 — submissions collection.
+    // The app writes one document per "데이터 추출 시작" click (no login).
+    // Allow create only; reject reads/updates/deletes from the client so
+    // saved submissions can't be enumerated or tampered with from the browser.
+    match /submissions/{docId} {
+      allow create: if isValidSubmission(request.resource.data);
+      allow read, update, delete: if false;
+    }
+
+    function isValidSubmission(d) {
+      return d.mode in ['manage', 'label']
+          && d.prompt is string
+          && d.prompt.size() < 20000
+          && d.createdAt == request.time;
+    }
+  }
+}

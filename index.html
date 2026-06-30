@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSDS 양식 프롬프트 빌더</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#16181d;--ink-soft:#4a4f5a;--line:#d6d3c9;--line-strong:#2b2d33;
+  --paper:#f6f4ec;--card:#fff;--hazard:#c8102e;--hazard-bg:#fbe9ec;
+  --accent:#1d4ed8;--ok:#15803d;
+  --sans:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo','Segoe UI',sans-serif;
+  --mono:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;
+}
+html,body{background:var(--paper);color:var(--ink);font-family:var(--sans);min-height:100vh;}
+::placeholder{color:#a8a59b;}
+button{font-family:var(--sans);}
+input,select,textarea{font-family:var(--sans);}
+
+.page{max-width:1280px;margin:0 auto;padding:28px 24px 64px;}
+
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.hdr-l{display:flex;align-items:center;gap:14px;}
+.ghs-mark{width:40px;height:40px;border:2.5px solid var(--hazard);transform:rotate(45deg);border-radius:4px;display:flex;align-items:center;justify-content:center;flex:none;}
+.ghs-mark span{transform:rotate(-45deg);color:var(--hazard);font-weight:800;font-size:22px;line-height:1;}
+.hdr-title{font-size:22px;font-weight:700;letter-spacing:-.01em;}
+.hdr-sub{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-top:3px;}
+.hdr-r{display:flex;flex-direction:column;align-items:flex-end;gap:9px;}
+.ver-tag{font-family:var(--mono);font-size:12px;color:var(--ink-soft);border:1px solid var(--line);border-radius:3px;padding:6px 11px;background:#fff;}
+.divider{height:2px;background:var(--line-strong);margin:18px 0 22px;}
+
+/* Start button */
+.btn-start{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;font-size:14px;font-weight:700;border-radius:4px;border:1px solid var(--line);background:#fff;color:#b6b3a8;cursor:not-allowed;}
+.btn-start.on{border-color:var(--hazard);background:var(--hazard);color:#fff;cursor:pointer;}
+.btn-start.on:hover{background:#aa0b27;border-color:#aa0b27;}
+.btn-start:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* Banner */
+#banner{display:none;border:1px solid var(--ok);background:#f0f8f2;border-radius:5px;padding:14px 16px;margin-bottom:22px;gap:13px;align-items:flex-start;}
+#banner.show{display:flex;}
+.bnr-icon{width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:none;}
+.bnr-close{border:none;background:none;cursor:pointer;color:var(--ink-soft);font-size:18px;line-height:1;padding:2px 4px;flex:none;}
+.bnr-t{font-weight:700;font-size:14px;color:var(--ink);}
+.bnr-d{font-size:12.5px;color:var(--ink-soft);line-height:1.7;margin-top:6px;}
+.bnr-f{font-family:var(--mono);font-size:11px;color:var(--ok);margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bnr-save{font-family:var(--mono);font-size:11px;margin-top:6px;display:none;}
+.bnr-save.show{display:block;}
+.bnr-save.pending{color:var(--ink-soft);}
+.bnr-save.ok{color:var(--ok);}
+.bnr-save.err{color:var(--hazard);}
+
+/* Mode toggle */
+.mode-wrap{display:inline-flex;gap:6px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:24px;}
+.mode-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;font-size:14px;font-weight:600;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+.mode-btn.on{background:var(--line-strong);color:#fff;border-color:var(--line-strong);}
+.mode-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.m-dia{width:12px;height:12px;border:2px solid var(--hazard);background:#fff;transform:rotate(45deg);border-radius:2px;opacity:.4;flex:none;}
+.mode-btn.on .m-dia{opacity:1;}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:20px;align-items:start;}
+@media(max-width:920px){.grid{grid-template-columns:1fr;}}
+
+/* Card */
+.card{background:#fff;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+.card-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#fbfaf5;}
+.badge{width:22px;height:22px;background:var(--line-strong);color:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none;}
+.card-title{font-weight:600;font-size:15px;}
+.card-hint{font-size:12px;color:var(--ink-soft);margin-left:auto;}
+.card-body{padding:18px 16px;display:flex;flex-direction:column;gap:18px;}
+
+/* Form */
+.fl{font-size:13px;font-weight:600;margin-bottom:7px;display:block;}
+.fl .hs{color:var(--ink-soft);font-weight:400;}
+input[type="text"],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:3px;font-size:14px;color:var(--ink);background:#fff;outline:none;}
+input[type="text"]:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.12);}
+textarea{min-height:64px;resize:vertical;line-height:1.5;}
+.fn{font-size:11.5px;color:var(--ink-soft);margin-top:5px;line-height:1.5;}
+
+/* Dropzone */
+.dropzone{border:1.5px dashed #c9c5b8;border-radius:5px;padding:22px 16px;text-align:center;cursor:pointer;background:#fbfaf5;}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:#f3f6fd;}
+.dz-t{font-size:14px;color:var(--ink);font-weight:600;}
+.dz-e{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:7px;}
+.fi{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--line);border-radius:3px;margin-top:8px;background:#fff;}
+.fi-tag{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;padding:2px 6px;border-radius:2px;flex:none;}
+.fi-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fi-rm{border:none;background:none;cursor:pointer;color:var(--ink-soft);font-size:17px;line-height:1;padding:2px 4px;}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:13px;border:1px solid var(--line);background:#fff;color:var(--ink);user-select:none;}
+.chip.on{border-color:var(--hazard);background:var(--hazard-bg);}
+.c-dia{width:12px;height:12px;border:2px solid var(--hazard);background:#fff;transform:rotate(45deg);border-radius:2px;opacity:.4;flex:none;}
+.chip.on .c-dia{opacity:1;}
+
+/* Preview */
+.prev-bg{background:#e9e6dd;padding:22px;}
+.sheet{background:#fff;border:1px solid var(--line-strong);padding:22px 20px;font-size:12px;color:var(--ink);line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.ph{color:var(--hazard);font-style:italic;}
+.name-box-wrap{display:flex;justify-content:center;margin-bottom:16px;}
+.name-box{border:1.5px solid var(--line-strong);padding:11px 28px;text-align:center;min-width:62%;}
+.nb-main{font-size:16px;font-weight:700;}
+.nb-cas{font-size:11px;margin-top:5px;}
+.pt{border-collapse:collapse;width:100%;font-size:11.5px;}
+.pt td{border:1px solid var(--line-strong);padding:7px 9px;vertical-align:top;}
+.pt .rl{width:96px;font-weight:600;background:#f6f4ec;text-align:center;padding:7px 8px;white-space:nowrap;}
+.pv-note{text-align:center;font-size:10.5px;color:var(--ink-soft);margin-top:13px;}
+/* label preview */
+.ll-legal{border:1.5px solid var(--line-strong);padding:8px;text-align:center;font-size:11px;margin-bottom:18px;}
+.ll-name{text-align:center;font-size:22px;font-weight:800;margin-bottom:7px;}
+.ll-cas{text-align:center;font-size:12px;margin-bottom:20px;}
+.ll-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;}
+.ll-icons{flex:1;display:flex;justify-content:center;gap:16px;flex-wrap:wrap;}
+.ll-sig{font-size:26px;font-weight:800;color:var(--hazard);white-space:nowrap;}
+.ll-pt .rl{width:110px;}
+.ll-sup{font-size:10.5px;color:var(--ink-soft);margin-top:16px;}
+.dw{display:inline-flex;flex-direction:column;align-items:center;gap:3px;}
+.di{display:inline-block;background:#fff;transform:rotate(45deg);}
+.di-sm{width:24px;height:24px;border:2px solid var(--hazard);}
+.di-lg{width:42px;height:42px;border:2.5px solid var(--hazard);}
+.di-lb{font-size:8.5px;color:var(--ink-soft);margin-top:2px;}
+
+/* Prompt */
+.prompt-sec{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+.prompt-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:#fbfaf5;}
+.prompt-ht{font-weight:600;font-size:15px;}
+.prompt-hs{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);}
+.btn-copy{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:600;border-radius:4px;border:1px solid var(--line-strong);background:var(--line-strong);color:#fff;cursor:pointer;}
+.btn-copy.done{border-color:var(--ok);background:var(--ok);}
+.btn-copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.prompt-body{padding:16px;}
+.code-blk{background:#1c1e24;color:#cdd2dc;font-family:var(--mono);font-size:12.5px;line-height:1.65;padding:18px;border-radius:4px;white-space:pre-wrap;word-break:break-word;overflow-x:auto;}
+.code-blk .fill{color:#7fb4ff;}
+.code-blk .emp{color:#6b7280;font-style:italic;}
+.use-note{margin-top:14px;font-size:12px;color:var(--ink-soft);line-height:1.65;background:#fbfaf5;border:1px solid var(--line);border-radius:4px;padding:12px 14px;}
+.use-note b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="ghs-mark"><span>!</span></div>
+      <div>
+        <div class="hdr-title">MSDS 양식 프롬프트 빌더</div>
+        <div class="hdr-sub">MSDS → 관리요령 · 경고표지 변환 프롬프트 생성기</div>
+      </div>
+    </div>
+    <div class="hdr-r">
+      <button id="btn-start" class="btn-start">데이터 추출 시작 →</button>
+      <div id="ver-tag" class="ver-tag">FORM v2.0 · 산안법 §114</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div id="banner">
+    <div class="bnr-icon">✓</div>
+    <div style="flex:1;min-width:0;">
+      <div id="bnr-t" class="bnr-t"></div>
+      <div id="bnr-d" class="bnr-d"></div>
+      <div id="bnr-f" class="bnr-f"></div>
+      <div id="bnr-save" class="bnr-save"></div>
+    </div>
+    <button class="bnr-close" id="bnr-close">×</button>
+  </div>
+
+  <div class="mode-wrap">
+    <button id="btn-manage" class="mode-btn on"><span class="m-dia"></span>작업공정별 관리요령</button>
+    <button id="btn-label" class="mode-btn"><span class="m-dia"></span>물질경고표지</button>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="badge">1</span>
+        <span class="card-title">입력</span>
+        <span class="card-hint">비운 항목은 MSDS에서 추출됩니다</span>
+      </div>
+      <div class="card-body">
+
+        <div>
+          <label class="fl">MSDS 문서 업로드</label>
+          <div id="dropzone" class="dropzone">
+            <div class="dz-t">파일을 끌어다 놓거나 클릭해서 선택</div>
+            <div class="dz-e">.pdf · .xlsx · .xls · .docx · .doc · .pptx · .ppt</div>
+          </div>
+          <input type="file" id="file-input" multiple style="display:none" accept=".pdf,.xlsx,.xls,.docx,.doc,.pptx,.ppt">
+          <div id="file-list"></div>
+          <div class="fn" style="margin-top:10px;">업로드한 파일은 프롬프트에 <b style="color:var(--ink)">파일명으로 기록</b>됩니다. 실제 내용 추출은 이 프롬프트와 <b style="color:var(--ink)">같은 파일을 Claude Design 대화창에 함께 첨부</b>해야 이뤄집니다.</div>
+        </div>
+
+        <div>
+          <label class="fl" for="f-name">물질명 <span class="hs">(선택 · 미입력 시 MSDS에서 추출)</span></label>
+          <input type="text" id="f-name" placeholder="비우면 MSDS에서 추출 (예: 톨루엔)">
+        </div>
+
+        <div>
+          <label class="fl" for="f-product">제품명 <span class="hs">(선택)</span></label>
+          <input type="text" id="f-product" placeholder="예: 신너 A">
+          <div class="fn">물질명 옆에 괄호로 표기. 비우면 괄호 생략.</div>
+        </div>
+
+        <div id="field-content" style="display:none">
+          <label class="fl" for="f-content">함유량</label>
+          <input type="text" id="f-content" placeholder="예: 95% 이상">
+        </div>
+
+        <div>
+          <label class="fl" for="f-cas">CAS No. <span class="hs">(주성분)</span></label>
+          <input type="text" id="f-cas" placeholder="예: 108-88-3">
+        </div>
+
+        <div>
+          <label class="fl" for="f-signal">신호어</label>
+          <select id="f-signal">
+            <option value="위험">위험</option>
+            <option value="경고">경고</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="fl">GHS 그림문자</label>
+          <div id="picto-chips" class="chips"></div>
+          <div class="fn">비워두면 H분류 기준으로 자동 선택됩니다.</div>
+        </div>
+
+        <div id="fields-label" style="display:none;flex-direction:column;gap:18px;">
+          <div>
+            <label class="fl" for="f-hphrase">유해·위험 문구 <span class="hs">(H문구)</span></label>
+            <textarea id="f-hphrase" style="min-height:70px;" placeholder="예: H225 고인화성 액체 및 증기 / H319 눈에 심한 자극을 일으킴"></textarea>
+          </div>
+          <div>
+            <label class="fl" for="f-pphrase">예방조치 문구 <span class="hs">(P문구·대표 항목)</span></label>
+            <textarea id="f-pphrase" style="min-height:70px;" placeholder="예: P210 열·불꽃 등 화기 멀리 / P280 보호장갑·보안경 착용"></textarea>
+          </div>
+        </div>
+
+        <div id="fields-manage" style="display:flex;flex-direction:column;gap:18px;">
+          <div>
+            <label class="fl" for="f-hazard">유해성·위험성 <span class="hs">(2항)</span></label>
+            <textarea id="f-hazard" placeholder="GHS 분류 / 예방조치 문구 요약"></textarea>
+          </div>
+          <div>
+            <label class="fl" for="f-precaution">취급상의 주의사항 <span class="hs">(7항)</span></label>
+            <textarea id="f-precaution" placeholder="안전취급요령 · 보관방법"></textarea>
+          </div>
+          <div>
+            <label class="fl" for="f-protective">적절한 보호구 <span class="hs">(8항)</span></label>
+            <textarea id="f-protective" placeholder="호흡기 · 눈 · 손 · 신체 보호구"></textarea>
+          </div>
+          <div>
+            <label class="fl" for="f-firstaid">응급조치요령 <span class="hs">(4항)</span></label>
+            <textarea id="f-firstaid" placeholder="눈 / 피부 / 흡입 / 먹었을 때"></textarea>
+          </div>
+          <div>
+            <label class="fl" for="f-spill">사고 시 대처방법 <span class="hs">(6항·누출)</span></label>
+            <textarea id="f-spill" placeholder="누출 시 정화 · 제거 방법"></textarea>
+          </div>
+        </div>
+
+        <div>
+          <label class="fl" for="f-supplier">공급자 정보 <span class="hs">(1항)</span></label>
+          <textarea id="f-supplier" placeholder="회사명 · 주소 · 연락처 · 긴급연락처"></textarea>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <span class="badge">2</span>
+        <span class="card-title">미리보기</span>
+        <span id="preview-mode-label" class="card-hint">작업공정별 관리요령</span>
+      </div>
+      <div class="prev-bg">
+        <div id="preview-manage" class="sheet"></div>
+        <div id="preview-label" class="sheet" style="display:none"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="prompt-sec">
+    <div class="prompt-hdr">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
+        <span class="prompt-ht">생성된 프롬프트</span>
+        <span class="prompt-hs">Claude Design 대화창에 붙여넣기 + MSDS 파일 첨부</span>
+      </div>
+      <button id="btn-copy" class="btn-copy">프롬프트 복사</button>
+    </div>
+    <div class="prompt-body">
+      <div id="code-blk" class="code-blk"></div>
+      <div class="use-note">상단에서 양식을 고르고 입력란을 채운 뒤 <b>프롬프트 복사</b>를 눌러 Claude Design 대화창에 붙여 넣고, MSDS 파일을 함께 첨부하세요. 값을 비운 항목은 '<span style="color:var(--ink)">MSDS에서 추출</span>'하라는 지시로 대체되며, 없는 내용은 임의로 채우지 않습니다.</div>
+    </div>
+  </div>
+
+</div>
+<script>
+const PICTOS = ['인화성','산화성','폭발성','고압가스','부식성','급성독성','감탄부호','건강유해성','환경유해성'];
+const EXT_COLOR = {pdf:'#b3261e',xls:'#15803d',xlsx:'#15803d',doc:'#1d4ed8',docx:'#1d4ed8',ppt:'#c2410c',pptx:'#c2410c'};
+
+let st = {
+  mode:'manage', files:[], name:'', product:'', content:'', cas:'', signal:'위험',
+  pictos:new Set(), hazard:'', precaution:'', protective:'', firstaid:'', spill:'',
+  hPhrase:'', pPhrase:'', supplier:'', copied:false, started:false
+};
+
+function set(patch){ Object.assign(st, patch); render(); }
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function pvCell(v, ph){
+  const t = (v||'').trim();
+  return t ? `<span style="white-space:pre-wrap">${esc(t)}</span>` : `<span class="ph">${esc(ph)}</span>`;
+}
+
+function pvName(){
+  const n = st.name.trim(), p = st.product.trim();
+  const nh = n ? esc(n) : '<span class="ph">MSDS에서 추출</span>';
+  return nh + (p ? esc(' ('+p+')') : '');
+}
+
+function pvPictos(size){
+  const sel = PICTOS.filter(k=>st.pictos.has(k));
+  if(!sel.length) return `<span class="ph">${size==='lg'?'H분류 기준 자동선택':'자동선택'}</span>`;
+  const dc = size==='lg' ? 'di di-lg' : 'di di-sm';
+  return sel.map(k=>`<div class="dw"><div class="${dc}"></div><span class="di-lb">${esc(k)}</span></div>`).join('');
+}
+
+function renderManagePreview(){
+  const cas = st.cas.trim();
+  const casH = cas ? `CAS No. : ${esc(cas)}` : `<span class="ph">CAS No. : MSDS에서 추출</span>`;
+  document.getElementById('preview-manage').innerHTML = `
+<div style="text-align:center;font-size:12px;margin-bottom:14px;">( 산업안전보건법 제114조에 따른 작업공정별 관리요령 )</div>
+<div class="name-box-wrap"><div class="name-box">
+  <div class="nb-main">${pvName()}</div>
+  <div class="nb-cas">${casH}</div>
+</div></div>
+<table class="pt"><tbody>
+<tr><td class="rl">경고 구분</td><td>
+  <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+    <span style="font-weight:700;">신호어 : ${esc(st.signal)}</span>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">${pvPictos('sm')}</div>
+  </div>
+</td></tr>
+<tr><td class="rl">유해성·위험성</td><td>${pvCell(st.hazard,'MSDS 2항에서 추출')}</td></tr>
+<tr><td class="rl">취급상의 주의사항</td><td>${pvCell(st.precaution,'MSDS 7항에서 추출')}</td></tr>
+<tr><td class="rl">적절한 보호구</td><td>${pvCell(st.protective,'MSDS 8항에서 추출')}</td></tr>
+<tr><td class="rl">응급조치요령</td><td>${pvCell(st.firstaid,'MSDS 4항에서 추출')}</td></tr>
+<tr><td class="rl">사고 시 대처방법</td><td>${pvCell(st.spill,'MSDS 6항에서 추출')}</td></tr>
+<tr><td class="rl">공급자 정보</td><td>${pvCell(st.supplier,'MSDS 1항에서 추출')}</td></tr>
+</tbody></table>
+<div class="pv-note">※ 기타 자세한 내용은 물질안전보건자료(MSDS) 참조</div>`;
+}
+
+function renderLabelPreview(){
+  const cas = st.cas.trim();
+  const cont = st.content.trim();
+  document.getElementById('preview-label').innerHTML = `
+<div class="ll-legal">[ 산업안전보건법 제110조 및 화학물질관리법 제16조에 의한 분류 ]</div>
+<div class="ll-name">${pvName()}</div>
+<div class="ll-cas">( CAS No. : ${cas?esc(cas):'<span class="ph">MSDS 추출</span>'} , 함유량 : ${cont?esc(cont):'<span class="ph">MSDS 추출</span>'} )</div>
+<div class="ll-row">
+  <div class="ll-icons">${pvPictos('lg')}</div>
+  <div class="ll-sig">${esc(st.signal)}</div>
+</div>
+<table class="pt ll-pt"><tbody>
+<tr><td class="rl">유해·위험 문구</td><td>${pvCell(st.hPhrase,'MSDS 2항 H문구에서 추출')}</td></tr>
+<tr><td class="rl">예방조치 문구</td><td>${pvCell(st.pPhrase,'MSDS 2항 P문구에서 추출')}</td></tr>
+</tbody></table>
+<div class="ll-sup">※ 공급자 정보 : ${pvCell(st.supplier,'MSDS 1항에서 추출 — 회사명·주소·연락처·긴급연락처')}</div>`;
+}
+
+function buildSegs(){
+  const segs=[];
+  const p=t=>segs.push([0,t]);
+  const b=t=>segs.push([1,t]);
+  const g=t=>segs.push([2,t]);
+  const val=(v,ph)=>{const t=(v||'').trim();t?b(t):g(ph);};
+  const sub=()=>{
+    const n=st.name.trim(),pr=st.product.trim();
+    n?b(n):g('MSDS 1항에서 추출 — 물질명');
+    if(pr)b(' ('+pr+')');
+  };
+  const files=st.files.map(f=>f.name).join(', ');
+  const picStr=PICTOS.filter(k=>st.pictos.has(k)).join(', ');
+
+  if(st.mode==='manage'){
+    p('당신은 MSDS(물질안전보건자료) PDF를 입력받아 "작업공정별 관리요령" 양식을\n이미지(JPG)로 생성하는 도구입니다. 업로드된 MSDS PDF는 항상 최신본으로 간주합니다.\n\n첨부 MSDS 문서: ');
+    files?b(files):g('이 프롬프트와 함께 MSDS 파일을 첨부하세요');
+    p('\n   └ 위 파일을 이 대화에 함께 첨부했는지 확인하고, 그 내용을 기준으로 작성한다.\n\n[양식 — 세로형 A4, 1페이지, 검은 테두리 표]\n\n1. 최상단(가운데 정렬): ( 산업안전보건법 제114조에 따른 작업공정별 관리요령 )\n2. 이름 박스: 슬라이드 정중앙에 배치한다.\n   - 박스의 좌우 여백이 동일해야 하며, 박스 안 텍스트도 가운데 정렬한다.\n   - 물질명(과 제품명)은 어떤 경우에도 가운데 정렬을 유지한다.\n   1행 물질명(제품명): ');
+    sub();
+    p('\n   2행 CAS No. : ');val(st.cas,'MSDS 1·3항에서 추출');
+    p('\n3. 좌측 항목명 / 우측 내용의 2열 표 (순서·매핑 고정):\n   ● 경고 구분 — 신호어 : ');b(st.signal);
+    p(' / 그림문자: ');picStr?b(picStr):g('H분류 기준 자동선택');
+    p('\n     └ 신호어 텍스트와 그림문자가 겹치지 않도록 그림문자는 같은 행 오른쪽 빈 공간에 나열.\n   ● 유해성·위험성(2항): ');val(st.hazard,'MSDS 2항에서 추출');
+    p('\n   ● 취급상의 주의사항(7항): ');val(st.precaution,'MSDS 7항에서 추출');
+    p('\n   ● 적절한 보호구(8항): ');val(st.protective,'MSDS 8항에서 추출');
+    p('\n   ● 응급조치요령(4항·눈/피부/흡입/먹었을 때): ');val(st.firstaid,'MSDS 4항에서 추출');
+    p('\n   ● 사고 시 대처방법(6항·누출): ');val(st.spill,'MSDS 6항에서 추출');
+    p('\n   ● 공급자 정보(1항): ');val(st.supplier,'MSDS 1항에서 추출');
+    p('\n4. 최하단: ※ 기타 자세한 내용은 물질안전보건자료(MSDS) 참조\n\n[규칙]\n- GHS 표준 그림문자(빨간 마름모·흰 바탕·검은 심볼)를 H분류에 맞춰 사용.\n- H/P 코드는 코드와 옆 설명 문구를 함께 대조하고 표준 코드와 한 번 더 확인해 OCR 오류를 잡는다.\n  표준에 없는 코드는 사용자에게 알린다.\n- 값이 주어진 항목은 그대로 쓰고, [대괄호] 항목만 MSDS에서 추출한다.\n- MSDS에 없는 내용은 임의로 채우지 않는다. 빈 항목은 "해당 자료 없음" 또는 "MSDS 참조"로 둔다.\n- 결과는 이미지(JPG)로 출력하고, 사람이 검토·승인할 항목(P문구 선정, 법조문 표기)을 함께 안내한다.');
+  } else {
+    p('당신은 MSDS(물질안전보건자료) PDF를 입력받아 "물질경고표지(GHS)" 양식을\n이미지(JPG)로 생성하는 도구입니다. 업로드된 MSDS PDF는 항상 최신본으로 간주합니다.\n\n첨부 MSDS 문서: ');
+    files?b(files):g('이 프롬프트와 함께 MSDS 파일을 첨부하세요');
+    p('\n   └ 위 파일을 이 대화에 함께 첨부했는지 확인하고, 그 내용을 기준으로 작성한다.\n\n[양식 — 세로형 A4, 1페이지, 검은 테두리]\n\n1. 최상단(가운데 정렬, 박스): [ 산업안전보건법 제110조 및 화학물질관리법 제16조에 의한 분류 ]\n2. 물질명 영역: 슬라이드 정중앙, 가운데 정렬로 크게 표기.\n   - 물질명(과 제품명)은 어떤 경우에도 가운데 정렬을 유지한다.\n   물질명(제품명): ');
+    sub();
+    p('\n   ( CAS No. : ');val(st.cas,'MSDS 1·3항에서 추출');
+    p(' , 함유량 : ');val(st.content,'MSDS 3항에서 추출');
+    p(' )\n3. GHS 그림문자(가운데 정렬로 나열): ');picStr?b(picStr):g('H분류 기준 자동선택');
+    p('\n4. 신호어(우측, 큰 글씨): ');b(st.signal);
+    p('\n5. 2행 표:\n   ● 유해·위험 문구(H문구): ');val(st.hPhrase,'MSDS 2항 H문구에서 추출');
+    p('\n   ● 예방조치 문구(P문구): ');val(st.pPhrase,'MSDS 2항 P문구에서 추출');
+    p('\n6. 최하단: ※ 공급자 정보 ');val(st.supplier,'MSDS 1항에서 추출 — 회사명·주소·연락처·긴급연락처');
+    p('\n\n[규칙]\n- GHS 표준 그림문자를 H분류에 맞춰 자동 선택·배치.\n- P문구가 많으면 대표 항목만 표지에 넣고 "※ 이외 예방조치 문구는 MSDS를 참조하시오"로 마무리.\n- 값이 주어진 항목은 그대로 쓰고, [대괄호] 항목만 MSDS에서 추출.\n- MSDS에 없는 내용은 임의로 채우지 않는다.\n- 결과는 이미지(JPG)로 출력하고, 사람이 검토·승인할 항목을 함께 안내한다.');
+  }
+  return segs.map(([t,tx])=>{
+    const e=esc(tx);
+    if(t===1) return `<span class="fill">${e}</span>`;
+    if(t===2) return `<span class="emp">${e}</span>`;
+    return e;
+  }).join('');
+}
+
+function render(){
+  const isL = st.mode==='label';
+
+  // Toggle
+  document.getElementById('btn-manage').classList.toggle('on',!isL);
+  document.getElementById('btn-label').classList.toggle('on',isL);
+
+  // Version tag
+  document.getElementById('ver-tag').textContent = isL ? 'FORM v2.0 · 산안법 §110' : 'FORM v2.0 · 산안법 §114';
+
+  // Mode label
+  document.getElementById('preview-mode-label').textContent = isL ? '물질경고표지' : '작업공정별 관리요령';
+
+  // Field visibility
+  document.getElementById('field-content').style.display = isL ? '' : 'none';
+  document.getElementById('fields-label').style.display = isL ? 'flex' : 'none';
+  document.getElementById('fields-manage').style.display = isL ? 'none' : 'flex';
+
+  // Preview sheets
+  document.getElementById('preview-manage').style.display = isL ? 'none' : '';
+  document.getElementById('preview-label').style.display = isL ? '' : 'none';
+
+  // Render preview
+  if(isL) renderLabelPreview(); else renderManagePreview();
+
+  // Prompt
+  document.getElementById('code-blk').innerHTML = buildSegs();
+
+  // Start button
+  const canStart = st.files.length > 0;
+  const bs = document.getElementById('btn-start');
+  bs.classList.toggle('on', canStart);
+  bs.disabled = !canStart;
+  bs.title = canStart ? '' : 'MSDS 파일 업로드 후 시작할 수 있습니다.';
+
+  // Banner
+  const bnr = document.getElementById('banner');
+  if(st.started){
+    bnr.classList.add('show');
+    document.getElementById('bnr-t').textContent = `추출 프롬프트가 복사되었습니다 · MSDS 파일 ${st.files.length}개 준비됨`;
+    document.getElementById('bnr-d').textContent = `아래 순서로 추출을 시작하세요 — ① Claude Design 대화창 열기 → ② 복사된 프롬프트 붙여넣기 → ③ 업로드한 MSDS 파일 ${st.files.length}개를 함께 첨부 → ④ 전송. 비운 항목은 첨부 파일에서 추출되며, 없는 내용은 임의로 채우지 않습니다.`;
+    document.getElementById('bnr-f').textContent = '첨부 대상: ' + (st.files.map(f=>f.name).join(' · ') || '—');
+  } else { bnr.classList.remove('show'); }
+
+  // Copy button
+  const bc = document.getElementById('btn-copy');
+  bc.textContent = st.copied ? '복사됨 ✓' : '프롬프트 복사';
+  bc.classList.toggle('done', st.copied);
+
+  // File list
+  document.getElementById('file-list').innerHTML = st.files.map((f,i)=>
+    `<div class="fi"><span class="fi-tag" style="background:${f.color}">${esc(f.ext.toUpperCase())}</span><span class="fi-name">${esc(f.name)}</span><button class="fi-rm" data-idx="${i}" aria-label="삭제">×</button></div>`
+  ).join('');
+
+  // Chips (update .on class without re-creating to preserve focus)
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.classList.toggle('on', st.pictos.has(c.dataset.picto));
+  });
+}
+
+function copyText(){
+  const el = document.getElementById('code-blk');
+  const text = el.innerText;
+  const done = ()=>{
+    set({copied:true});
+    clearTimeout(window._ct);
+    window._ct = setTimeout(()=>set({copied:false}), 1600);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallback(text,done));
+  } else { fallback(text,done); }
+}
+
+function fallback(text,done){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.cssText='position:fixed;opacity:0;top:0;left:0;';
+  document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy');}catch(e){}
+  document.body.removeChild(ta); done();
+}
+
+function addFiles(list){
+  const allowed=new Set(['pdf','xlsx','xls','docx','doc','pptx','ppt']);
+  const next=[...st.files];
+  Array.from(list||[]).forEach(file=>{
+    const name=file.name;
+    const ext=(name.split('.').pop()||'').toLowerCase();
+    if(!allowed.has(ext)) return;
+    if(next.some(f=>f.name===name)) return;
+    next.push({name,ext,color:EXT_COLOR[ext]||'#4a4f5a'});
+  });
+  set({files:next});
+}
+
+// Chips init
+const chips = document.getElementById('picto-chips');
+chips.innerHTML = PICTOS.map(k=>`<div class="chip" data-picto="${esc(k)}" tabindex="0"><span class="c-dia"></span>${esc(k)}</div>`).join('');
+chips.addEventListener('click', e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  const k=c.dataset.picto;
+  const next=new Set(st.pictos);
+  next.has(k)?next.delete(k):next.add(k);
+  set({pictos:next});
+});
+chips.addEventListener('keydown', e=>{
+  if(e.key===' '||e.key==='Enter'){
+    const c=e.target.closest('.chip'); if(!c) return;
+    e.preventDefault();
+    const k=c.dataset.picto;
+    const next=new Set(st.pictos);
+    next.has(k)?next.delete(k):next.add(k);
+    set({pictos:next});
+  }
+});
+
+// File drag/drop
+const dz=document.getElementById('dropzone');
+const fi=document.getElementById('file-input');
+dz.addEventListener('click',()=>fi.click());
+fi.addEventListener('change',e=>{addFiles(e.target.files);e.target.value='';});
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');addFiles(e.dataTransfer.files);});
+
+// File remove
+document.getElementById('file-list').addEventListener('click',e=>{
+  const btn=e.target.closest('.fi-rm'); if(!btn) return;
+  const idx=parseInt(btn.dataset.idx);
+  if(!isNaN(idx)){const next=[...st.files];next.splice(idx,1);set({files:next});}
+});
+
+// Mode toggle
+document.getElementById('btn-manage').addEventListener('click',()=>set({mode:'manage',started:false}));
+document.getElementById('btn-label').addEventListener('click',()=>set({mode:'label',started:false}));
+
+// Build a record of the current inputs + generated prompt for persistence.
+function collectRecord(){
+  return {
+    mode: st.mode,
+    name: st.name.trim(),
+    product: st.product.trim(),
+    content: st.content.trim(),
+    cas: st.cas.trim(),
+    signal: st.signal,
+    pictos: PICTOS.filter(k=>st.pictos.has(k)),
+    hazard: st.hazard.trim(),
+    precaution: st.precaution.trim(),
+    protective: st.protective.trim(),
+    firstaid: st.firstaid.trim(),
+    spill: st.spill.trim(),
+    hPhrase: st.hPhrase.trim(),
+    pPhrase: st.pPhrase.trim(),
+    supplier: st.supplier.trim(),
+    files: st.files.map(f=>({name:f.name,ext:f.ext})),
+    prompt: document.getElementById('code-blk').innerText
+  };
+}
+
+function setSaveStatus(cls, text){
+  const el=document.getElementById('bnr-save');
+  el.className='bnr-save show '+cls;
+  el.textContent=text;
+}
+
+async function saveRecord(){
+  const el=document.getElementById('bnr-save');
+  if(typeof window.saveSubmission!=='function'){
+    el.className='bnr-save'; // Firestore not configured — stay silent
+    return;
+  }
+  setSaveStatus('pending','Firestore에 저장 중…');
+  try{
+    const id=await window.saveSubmission(collectRecord());
+    setSaveStatus('ok','✓ Firestore에 저장됨'+(id?' · 문서 ID '+id:''));
+  }catch(e){
+    setSaveStatus('err','⚠ Firestore 저장 실패: '+(e&&e.message?e.message:e)+' — 프롬프트 복사는 정상 완료되었습니다.');
+  }
+}
+
+// Buttons
+document.getElementById('btn-start').addEventListener('click',()=>{
+  if(!st.files.length) return;
+  copyText();
+  set({started:true});
+  saveRecord();
+});
+document.getElementById('bnr-close').addEventListener('click',()=>{
+  document.getElementById('bnr-save').className='bnr-save';
+  set({started:false});
+});
+document.getElementById('btn-copy').addEventListener('click',copyText);
+
+// Form fields
+[['f-name','name'],['f-product','product'],['f-content','content'],
+ ['f-cas','cas'],['f-hazard','hazard'],['f-precaution','precaution'],
+ ['f-protective','protective'],['f-firstaid','firstaid'],['f-spill','spill'],
+ ['f-hphrase','hPhrase'],['f-pphrase','pPhrase'],['f-supplier','supplier']
+].forEach(([id,key])=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input',e=>set({[key]:e.target.value}));
+});
+document.getElementById('f-signal').addEventListener('change',e=>set({signal:e.target.value}));
+
+// Initial render
+render();
+</script>
+
+<!-- Firebase: persist each submission to Firestore -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA9m5sTxshciX31t1eIUHU0Bg9Gcs5uO4c",
+  authDomain: "msds-661a7.firebaseapp.com",
+  projectId: "msds-661a7",
+  storageBucket: "msds-661a7.firebasestorage.app",
+  messagingSenderId: "387844466188",
+  appId: "1:387844466188:web:e33e4052be66df99f97029",
+  measurementId: "G-VBNQMZER8B"
+};
+
+const app = initializeApp(firebaseConfig);
+// Analytics only works on a served https/localhost origin; never block on it.
+try { getAnalytics(app); } catch (e) { console.warn("[firebase] analytics skipped:", e?.message || e); }
+
+const db = getFirestore(app);
+
+// Called by the page when the user starts extraction. Returns the new doc ID.
+window.saveSubmission = async (record) => {
+  const ref = await addDoc(collection(db, "submissions"), {
+    ...record,
+    createdAt: serverTimestamp(),
+    userAgent: navigator.userAgent
+  });
+  return ref.id;
+};
+</script>
+</body>
+</html>
