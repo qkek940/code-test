@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;background:#f6f4ec;}
+::placeholder{color:#a8a59b;}
+button{font-family:inherit;}
+</style>
+</helmet>
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo','Segoe UI',sans-serif;color:#16181d;background:#f6f4ec;min-height:100vh;padding:0 24px;">
+<div style="max-width:1280px;margin:0 auto;padding:28px 0 64px;">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:40px;height:40px;border:2.5px solid #c8102e;transform:rotate(45deg);display:flex;align-items:center;justify-content:center;border-radius:4px;flex:none;">
+        <span style="transform:rotate(-45deg);color:#c8102e;font-weight:800;font-size:22px;line-height:1;">!</span>
+      </div>
+      <div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.01em;">MSDS 양식 프롬프트 빌더</div>
+        <div style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4a4f5a;margin-top:3px;">MSDS → 관리요령 · 경고표지 변환 프롬프트 생성기</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:9px;">
+      <button onClick="{{ onStart }}" title="{{ startHint }}" style="{{ startBtnStyle }}" style-focus="outline:2px solid #1d4ed8;outline-offset:2px;">{{ startLabel }}</button>
+      <div style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4a4f5a;border:1px solid #d6d3c9;border-radius:3px;padding:6px 11px;background:#fff;">{{ versionTag }}</div>
+    </div>
+  </div>
+  <div style="height:2px;background:#2b2d33;margin:18px 0 22px;"></div>
+
+  <sc-if value="{{ started }}" hint-placeholder-val="{{ false }}"><div style="border:1px solid #15803d;background:#f0f8f2;border-radius:5px;padding:14px 16px;margin-bottom:22px;display:flex;gap:13px;align-items:flex-start;">
+    <span style="width:26px;height:26px;border-radius:50%;background:#15803d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:none;">✓</span>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:700;font-size:14px;color:#16181d;">추출 프롬프트가 복사되었습니다 · MSDS 파일 {{ startedCount }}개 준비됨</div>
+      <div style="font-size:12.5px;color:#4a4f5a;line-height:1.7;margin-top:6px;">아래 순서로 추출을 시작하세요 — ① Claude Design 대화창 열기 → ② 복사된 프롬프트 붙여넣기 → ③ 업로드한 MSDS 파일 {{ startedCount }}개를 함께 첨부 → ④ 전송. 비운 항목은 첨부 파일에서 추출되며, 없는 내용은 임의로 채우지 않습니다.</div>
+      <div style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#15803d;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">첨부 대상: {{ startedFiles }}</div>
+    </div>
+    <button onClick="{{ closeStart }}" style="border:none;background:none;cursor:pointer;color:#4a4f5a;font-size:18px;line-height:1;padding:2px 4px;flex:none;">×</button>
+  </div></sc-if>
+
+  <div style="display:inline-flex;gap:6px;background:#fff;border:1px solid #d6d3c9;border-radius:999px;padding:4px;margin-bottom:24px;">
+    <button onClick="{{ toggleManage }}" style="{{ manageBtnStyle }}" style-focus="outline:2px solid #1d4ed8;outline-offset:2px;"><span style="{{ mDiaStyle }}"></span>작업공정별 관리요령</button>
+    <button onClick="{{ toggleLabel }}" style="{{ labelBtnStyle }}" style-focus="outline:2px solid #1d4ed8;outline-offset:2px;"><span style="{{ lDiaStyle }}"></span>물질경고표지</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:20px;align-items:start;">
+
+    <div style="background:#fff;border:1px solid #d6d3c9;border-radius:5px;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #d6d3c9;background:#fbfaf5;">
+        <span style="width:22px;height:22px;background:#2b2d33;color:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none;">1</span>
+        <span style="font-weight:600;font-size:15px;">입력</span>
+        <span style="font-size:12px;color:#4a4f5a;margin-left:auto;">비운 항목은 MSDS에서 추출됩니다</span>
+      </div>
+      <div style="padding:18px 16px;display:flex;flex-direction:column;gap:18px;">
+
+        <div>
+          <label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">MSDS 문서 업로드</label>
+          <div onClick="{{ openFile }}" onDrop="{{ onDrop }}" onDragOver="{{ onDragOver }}" style="border:1.5px dashed #c9c5b8;border-radius:5px;padding:22px 16px;text-align:center;cursor:pointer;background:#fbfaf5;" style-hover="border-color:#1d4ed8;background:#f3f6fd;">
+            <div style="font-size:14px;color:#16181d;font-weight:600;">파일을 끌어다 놓거나 클릭해서 선택</div>
+            <div style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#4a4f5a;margin-top:7px;">.pdf · .xlsx · .xls · .docx · .doc · .pptx · .ppt</div>
+          </div>
+          <input type="file" multiple ref="{{ setFileRef }}" onChange="{{ onFileChange }}" style="display:none;" />
+          <sc-for list="{{ filesView }}" as="f" hint-placeholder-count="0"><div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #d6d3c9;border-radius:3px;margin-top:8px;background:#fff;"><span style="{{ f.tagStyle }}">{{ f.ext }}</span><span style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span><button onClick="{{ f.onRemove }}" style="border:none;background:none;cursor:pointer;color:#4a4f5a;font-size:17px;line-height:1;padding:2px 4px;">×</button></div></sc-for>
+          <div style="font-size:11.5px;color:#4a4f5a;margin-top:10px;line-height:1.55;">업로드한 파일은 프롬프트에 <b style="color:#16181d;">파일명으로 기록</b>됩니다. 실제 내용 추출은 이 프롬프트와 <b style="color:#16181d;">같은 파일을 Claude Design 대화창에 함께 첨부</b>해야 이뤄집니다.</div>
+        </div>
+
+        <div>
+          <label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">물질명 <span style="color:#4a4f5a;font-weight:400;">(선택 · 미입력 시 MSDS에서 추출)</span></label>
+          <input value="{{ name }}" onChange="{{ onName }}" placeholder="비우면 MSDS에서 추출 (예: 톨루엔)" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);" />
+        </div>
+
+        <div>
+          <label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">제품명 <span style="color:#4a4f5a;font-weight:400;">(선택)</span></label>
+          <input value="{{ product }}" onChange="{{ onProduct }}" placeholder="예: 신너 A" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);" />
+          <div style="font-size:11.5px;color:#4a4f5a;margin-top:5px;line-height:1.5;">물질명 옆에 괄호로 표기. 비우면 괄호 생략.</div>
+        </div>
+
+        <sc-if value="{{ isLabel }}" hint-placeholder-val="{{ false }}"><div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">함유량</label><input value="{{ content }}" onChange="{{ onContent }}" placeholder="예: 95% 이상" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);" /></div></sc-if>
+
+        <div>
+          <label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">CAS No. <span style="color:#4a4f5a;font-weight:400;">(주성분)</span></label>
+          <input value="{{ cas }}" onChange="{{ onCas }}" placeholder="예: 108-88-3" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);" />
+        </div>
+
+        <div>
+          <label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">신호어</label>
+          <select value="{{ signal }}" onChange="{{ onSignal }}" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);">
+            <option value="위험">위험</option>
+            <option value="경고">경고</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">GHS 그림문자</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <sc-for list="{{ pictoList }}" as="p" hint-placeholder-count="9"><div onClick="{{ p.onClick }}" style="{{ p.chipStyle }}"><span style="{{ p.diamondStyle }}"></span>{{ p.label }}</div></sc-for>
+          </div>
+          <div style="font-size:11.5px;color:#4a4f5a;margin-top:9px;line-height:1.5;">비워두면 H분류 기준으로 자동 선택됩니다.</div>
+        </div>
+
+        <sc-if value="{{ isLabel }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:18px;">
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">유해·위험 문구 (H문구)</label><textarea value="{{ hPhrase }}" onChange="{{ onHPhrase }}" placeholder="예: H225 고인화성 액체 및 증기 / H319 눈에 심한 자극을 일으킴" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:70px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">예방조치 문구 (P문구·대표 항목)</label><textarea value="{{ pPhrase }}" onChange="{{ onPPhrase }}" placeholder="예: P210 열·불꽃 등 화기 멀리 / P280 보호장갑·보안경 착용" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:70px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+        </div></sc-if>
+
+        <sc-if value="{{ isManage }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:18px;">
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">유해성·위험성 <span style="color:#4a4f5a;font-weight:400;">(2항)</span></label><textarea value="{{ hazard }}" onChange="{{ onHazard }}" placeholder="GHS 분류 / 예방조치 문구 요약" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:64px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">취급상의 주의사항 <span style="color:#4a4f5a;font-weight:400;">(7항)</span></label><textarea value="{{ precaution }}" onChange="{{ onPrecaution }}" placeholder="안전취급요령 · 보관방법" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:64px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">적절한 보호구 <span style="color:#4a4f5a;font-weight:400;">(8항)</span></label><textarea value="{{ protective }}" onChange="{{ onProtective }}" placeholder="호흡기 · 눈 · 손 · 신체 보호구" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:64px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">응급조치요령 <span style="color:#4a4f5a;font-weight:400;">(4항)</span></label><textarea value="{{ firstaid }}" onChange="{{ onFirstaid }}" placeholder="눈 / 피부 / 흡입 / 먹었을 때" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:64px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+          <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">사고 시 대처방법 <span style="color:#4a4f5a;font-weight:400;">(6항·누출)</span></label><textarea value="{{ spill }}" onChange="{{ onSpill }}" placeholder="누출 시 정화 · 제거 방법" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:64px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+        </div></sc-if>
+
+        <div><label style="font-size:13px;font-weight:600;margin-bottom:7px;display:block;">공급자 정보 <span style="color:#4a4f5a;font-weight:400;">(1항)</span></label><textarea value="{{ supplier }}" onChange="{{ onSupplier }}" placeholder="회사명 · 주소 · 연락처 · 긴급연락처" style="width:100%;padding:8px 10px;border:1px solid #d6d3c9;border-radius:3px;font-size:14px;color:#16181d;background:#fff;outline:none;min-height:64px;resize:vertical;line-height:1.5;" style-focus="border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,0.12);"></textarea></div>
+
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #d6d3c9;border-radius:5px;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #d6d3c9;background:#fbfaf5;">
+        <span style="width:22px;height:22px;background:#2b2d33;color:#fff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none;">2</span>
+        <span style="font-weight:600;font-size:15px;">미리보기</span>
+        <span style="font-size:12px;color:#4a4f5a;margin-left:auto;">{{ previewLabel }}</span>
+      </div>
+      <div style="background:#e9e6dd;padding:22px;">
+
+        <sc-if value="{{ isManage }}" hint-placeholder-val="{{ true }}"><div style="background:#fff;border:1px solid #2b2d33;padding:22px 20px;font-size:12px;color:#16181d;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+          <div style="text-align:center;font-size:12px;margin-bottom:14px;">( 산업안전보건법 제114조에 따른 작업공정별 관리요령 )</div>
+          <div style="display:flex;justify-content:center;margin-bottom:16px;">
+            <div style="border:1.5px solid #2b2d33;padding:11px 28px;text-align:center;min-width:62%;">
+              <div style="font-size:16px;font-weight:700;"><span style="{{ pvName.style }}">{{ pvName.text }}</span>{{ pvProductSuffix }}</div>
+              <div style="font-size:11px;margin-top:5px;"><span style="{{ pvCasManage.style }}">{{ pvCasManage.text }}</span></div>
+            </div>
+          </div>
+          <table style="border-collapse:collapse;width:100%;font-size:11.5px;"><tbody>
+            <tr>
+              <td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">경고 구분</td>
+              <td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;"><span style="font-weight:700;">신호어 : {{ signal }}</span><sc-if value="{{ pvNoPictos }}" hint-placeholder-val="{{ true }}"><span style="color:#c8102e;font-style:italic;">H분류 기준 자동선택</span></sc-if><sc-if value="{{ pvHasPictos }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:10px;flex-wrap:wrap;"><sc-for list="{{ pvPictos }}" as="d" hint-placeholder-count="0"><div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border:2px solid #c8102e;background:#fff;transform:rotate(45deg);"></div><span style="font-size:8.5px;color:#4a4f5a;margin-top:2px;">{{ d }}</span></div></sc-for></div></sc-if></div></td>
+            </tr>
+            <tr><td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">유해성·위험성</td><td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><span style="{{ pvHazard.style }}">{{ pvHazard.text }}</span></td></tr>
+            <tr><td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">취급상의 주의사항</td><td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><span style="{{ pvPrecaution.style }}">{{ pvPrecaution.text }}</span></td></tr>
+            <tr><td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">적절한 보호구</td><td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><span style="{{ pvProtective.style }}">{{ pvProtective.text }}</span></td></tr>
+            <tr><td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">응급조치요령</td><td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><span style="{{ pvFirstaid.style }}">{{ pvFirstaid.text }}</span></td></tr>
+            <tr><td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">사고 시 대처방법</td><td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><span style="{{ pvSpill.style }}">{{ pvSpill.text }}</span></td></tr>
+            <tr><td style="border:1px solid #2b2d33;padding:7px 8px;width:96px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">공급자 정보</td><td style="border:1px solid #2b2d33;padding:7px 9px;vertical-align:top;"><span style="{{ pvSupplier.style }}">{{ pvSupplier.text }}</span></td></tr>
+          </tbody></table>
+          <div style="text-align:center;font-size:10.5px;color:#4a4f5a;margin-top:13px;">※ 기타 자세한 내용은 물질안전보건자료(MSDS) 참조</div>
+        </div></sc-if>
+
+        <sc-if value="{{ isLabel }}" hint-placeholder-val="{{ false }}"><div style="background:#fff;border:1px solid #2b2d33;padding:22px 20px;font-size:12px;color:#16181d;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+          <div style="border:1.5px solid #2b2d33;padding:8px;text-align:center;font-size:11px;margin-bottom:18px;">[ 산업안전보건법 제110조 및 화학물질관리법 제16조에 의한 분류 ]</div>
+          <div style="text-align:center;font-size:22px;font-weight:800;margin-bottom:7px;"><span style="{{ pvName.style }}">{{ pvName.text }}</span>{{ pvProductSuffix }}</div>
+          <div style="text-align:center;font-size:12px;margin-bottom:20px;">( CAS No. : <span style="{{ pvCasL.style }}">{{ pvCasL.text }}</span> , 함유량 : <span style="{{ pvContentL.style }}">{{ pvContentL.text }}</span> )</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;">
+            <div style="flex:1;display:flex;justify-content:center;gap:16px;flex-wrap:wrap;"><sc-if value="{{ pvNoPictos }}" hint-placeholder-val="{{ true }}"><span style="color:#c8102e;font-style:italic;font-size:13px;">H분류 기준 자동선택</span></sc-if><sc-if value="{{ pvHasPictos }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ pvPictos }}" as="d" hint-placeholder-count="0"><div style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:42px;height:42px;border:2.5px solid #c8102e;background:#fff;transform:rotate(45deg);"></div><span style="font-size:9.5px;color:#4a4f5a;margin-top:4px;">{{ d }}</span></div></sc-for></sc-if></div>
+            <div style="font-size:26px;font-weight:800;color:#c8102e;white-space:nowrap;">{{ signal }}</div>
+          </div>
+          <table style="border-collapse:collapse;width:100%;font-size:11.5px;"><tbody>
+            <tr><td style="border:1px solid #2b2d33;padding:8px 9px;width:110px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">유해·위험 문구</td><td style="border:1px solid #2b2d33;padding:8px 9px;vertical-align:top;"><span style="{{ pvHPhrase.style }}">{{ pvHPhrase.text }}</span></td></tr>
+            <tr><td style="border:1px solid #2b2d33;padding:8px 9px;width:110px;font-weight:600;background:#f6f4ec;text-align:center;vertical-align:top;">예방조치 문구</td><td style="border:1px solid #2b2d33;padding:8px 9px;vertical-align:top;"><span style="{{ pvPPhrase.style }}">{{ pvPPhrase.text }}</span></td></tr>
+          </tbody></table>
+          <div style="font-size:10.5px;color:#4a4f5a;margin-top:16px;">※ 공급자 정보 : <span style="{{ pvSupplier.style }}">{{ pvSupplier.text }}</span></div>
+        </div></sc-if>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:22px;background:#fff;border:1px solid #d6d3c9;border-radius:5px;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #d6d3c9;background:#fbfaf5;">
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span style="font-weight:600;font-size:15px;">생성된 프롬프트</span>
+        <span style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:#4a4f5a;">Claude Design 대화창에 붙여넣기 + MSDS 파일 첨부</span>
+      </div>
+      <button onClick="{{ copyPrompt }}" style="{{ copyBtnStyle }}" style-focus="outline:2px solid #1d4ed8;outline-offset:2px;">{{ copyLabel }}</button>
+    </div>
+    <div style="padding:16px;">
+      <div ref="{{ setCodeRef }}" style="background:#1c1e24;color:#cdd2dc;font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.65;padding:18px;border-radius:4px;white-space:pre-wrap;word-break:break-word;overflow-x:auto;"><sc-for list="{{ segments }}" as="seg" hint-placeholder-count="1"><span style="{{ seg.style }}">{{ seg.text }}</span></sc-for></div>
+      <div style="margin-top:14px;font-size:12px;color:#4a4f5a;line-height:1.65;background:#fbfaf5;border:1px solid #d6d3c9;border-radius:4px;padding:12px 14px;">상단에서 양식을 고르고 입력란을 채운 뒤 <b style="color:#16181d;">프롬프트 복사</b>를 눌러 Claude Design 대화창에 붙여 넣고, MSDS 파일을 함께 첨부하세요. 값을 비운 항목은 '<span style="color:#16181d;">MSDS에서 추출</span>'하라는 지시로 대체되며, 없는 내용은 임의로 채우지 않습니다.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    mode: 'manage',
+    files: [],
+    name: '', product: '', content: '', cas: '',
+    signal: '위험',
+    pictos: {},
+    hazard: '', precaution: '', protective: '', firstaid: '', spill: '',
+    hPhrase: '', pPhrase: '',
+    supplier: '',
+    copied: false,
+    started: false,
+  };
+
+  PICTOS = ['인화성','산화성','폭발성','고압가스','부식성','급성독성','감탄부호','건강유해성','환경유해성'];
+  MONO = "'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace";
+
+  set(field) { return (e) => this.setState({ [field]: e.target.value }); }
+
+  togglePicto(label) {
+    const p = { ...this.state.pictos };
+    if (p[label]) delete p[label]; else p[label] = true;
+    this.setState({ pictos: p });
+  }
+
+  colorOf(ext) {
+    return ({ pdf:'#b3261e', xls:'#15803d', xlsx:'#15803d', doc:'#1d4ed8', docx:'#1d4ed8', ppt:'#c2410c', pptx:'#c2410c' })[ext] || '#4a4f5a';
+  }
+
+  addFiles(list) {
+    const allowed = ['pdf','xlsx','xls','docx','doc','pptx','ppt'];
+    const next = [...this.state.files];
+    Array.from(list || []).forEach((file) => {
+      const name = file.name;
+      const ext = (name.split('.').pop() || '').toLowerCase();
+      if (!allowed.includes(ext)) return;
+      if (next.some((f) => f.name === name)) return;
+      next.push({ name, ext, color: this.colorOf(ext) });
+    });
+    this.setState({ files: next });
+  }
+
+  removeFile(i) {
+    const next = [...this.state.files];
+    next.splice(i, 1);
+    this.setState({ files: next });
+  }
+
+  _fallback(text, done) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+    done();
+  }
+
+  copyPrompt() {
+    const text = this.codeEl ? this.codeEl.innerText : '';
+    const done = () => {
+      this.setState({ copied: true });
+      clearTimeout(this._t);
+      this._t = setTimeout(() => this.setState({ copied: false }), 1600);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => this._fallback(text, done));
+      } else { this._fallback(text, done); }
+    } catch (e) { this._fallback(text, done); }
+  }
+
+  buildSegments() {
+    const s = this.state;
+    const segs = [];
+    const plain = (t) => segs.push({ text: t, style: { color: '#cdd2dc' } });
+    const blue = (t) => segs.push({ text: t, style: { color: '#7fb4ff' } });
+    const gray = (t) => segs.push({ text: t, style: { color: '#6b7280', fontStyle: 'italic' } });
+    const val = (v, ph) => { const t = (v || '').trim(); if (t) blue(t); else gray(ph); };
+    const emitSub = () => {
+      const n = s.name.trim(), p = s.product.trim();
+      if (n) blue(n); else gray('MSDS 1항에서 추출 — 물질명');
+      if (p) blue(' (' + p + ')');
+    };
+
+    const files = s.files.map((f) => f.name).join(', ');
+    const subN = s.name.trim(), subP = s.product.trim();
+    const subStr = subN ? (subP ? subN + ' (' + subP + ')' : subN) : '';
+    const picStr = this.PICTOS.filter((k) => s.pictos[k]).join(', ');
+
+    if (s.mode === 'manage') {
+      plain('당신은 MSDS(물질안전보건자료) PDF를 입력받아 "작업공정별 관리요령" 양식을\n이미지(JPG)로 생성하는 도구입니다. 업로드된 MSDS PDF는 항상 최신본으로 간주합니다.\n\n첨부 MSDS 문서: ');
+      if (files) blue(files); else gray('이 프롬프트와 함께 MSDS 파일을 첨부하세요');
+      plain('\n   └ 위 파일을 이 대화에 함께 첨부했는지 확인하고, 그 내용을 기준으로 작성한다.\n\n[양식 — 세로형 A4, 1페이지, 검은 테두리 표]\n\n1. 최상단(가운데 정렬): ( 산업안전보건법 제114조에 따른 작업공정별 관리요령 )\n2. 이름 박스: 슬라이드 정중앙에 배치한다.\n   - 박스의 좌우 여백이 동일해야 하며, 박스 안 텍스트도 가운데 정렬한다.\n   - 물질명(과 제품명)은 어떤 경우에도 가운데 정렬을 유지한다.\n   1행 물질명(제품명): ');
+      emitSub();
+      plain('\n   2행 CAS No. : ');
+      val(s.cas, 'MSDS 1·3항에서 추출');
+      plain('\n3. 좌측 항목명 / 우측 내용의 2열 표 (순서·매핑 고정):\n   ● 경고 구분 — 신호어 : ');
+      blue(s.signal);
+      plain(' / 그림문자: ');
+      if (picStr) blue(picStr); else gray('H분류 기준 자동선택');
+      plain('\n     └ 신호어 텍스트와 그림문자가 겹치지 않도록 그림문자는 같은 행 오른쪽 빈 공간에 나열.\n   ● 유해성·위험성(2항): ');
+      val(s.hazard, 'MSDS 2항에서 추출');
+      plain('\n   ● 취급상의 주의사항(7항): ');
+      val(s.precaution, 'MSDS 7항에서 추출');
+      plain('\n   ● 적절한 보호구(8항): ');
+      val(s.protective, 'MSDS 8항에서 추출');
+      plain('\n   ● 응급조치요령(4항·눈/피부/흡입/먹었을 때): ');
+      val(s.firstaid, 'MSDS 4항에서 추출');
+      plain('\n   ● 사고 시 대처방법(6항·누출): ');
+      val(s.spill, 'MSDS 6항에서 추출');
+      plain('\n   ● 공급자 정보(1항): ');
+      val(s.supplier, 'MSDS 1항에서 추출');
+      plain('\n4. 최하단: ※ 기타 자세한 내용은 물질안전보건자료(MSDS) 참조\n\n[규칙]\n- GHS 표준 그림문자(빨간 마름모·흰 바탕·검은 심볼)를 H분류에 맞춰 사용.\n- H/P 코드는 코드와 옆 설명 문구를 함께 대조하고 표준 코드와 한 번 더 확인해 OCR 오류를 잡는다.\n  표준에 없는 코드는 사용자에게 알린다.\n- 값이 주어진 항목은 그대로 쓰고, [대괄호] 항목만 MSDS에서 추출한다.\n- MSDS에 없는 내용은 임의로 채우지 않는다. 빈 항목은 "해당 자료 없음" 또는 "MSDS 참조"로 둔다.\n- 결과는 이미지(JPG)로 출력하고, 사람이 검토·승인할 항목(P문구 선정, 법조문 표기)을 함께 안내한다.');
+    } else {
+      plain('당신은 MSDS(물질안전보건자료) PDF를 입력받아 "물질경고표지(GHS)" 양식을\n이미지(JPG)로 생성하는 도구입니다. 업로드된 MSDS PDF는 항상 최신본으로 간주합니다.\n\n첨부 MSDS 문서: ');
+      if (files) blue(files); else gray('이 프롬프트와 함께 MSDS 파일을 첨부하세요');
+      plain('\n   └ 위 파일을 이 대화에 함께 첨부했는지 확인하고, 그 내용을 기준으로 작성한다.\n\n[양식 — 세로형 A4, 1페이지, 검은 테두리]\n\n1. 최상단(가운데 정렬, 박스): [ 산업안전보건법 제110조 및 화학물질관리법 제16조에 의한 분류 ]\n2. 물질명 영역: 슬라이드 정중앙, 가운데 정렬로 크게 표기.\n   - 물질명(과 제품명)은 어떤 경우에도 가운데 정렬을 유지한다.\n   물질명(제품명): ');
+      emitSub();
+      plain('\n   ( CAS No. : ');
+      val(s.cas, 'MSDS 1·3항에서 추출');
+      plain(' , 함유량 : ');
+      val(s.content, 'MSDS 3항에서 추출');
+      plain(' )\n3. GHS 그림문자(가운데 정렬로 나열): ');
+      if (picStr) blue(picStr); else gray('H분류 기준 자동선택');
+      plain('\n4. 신호어(우측, 큰 글씨): ');
+      blue(s.signal);
+      plain('\n5. 2행 표:\n   ● 유해·위험 문구(H문구): ');
+      val(s.hPhrase, 'MSDS 2항 H문구에서 추출');
+      plain('\n   ● 예방조치 문구(P문구): ');
+      val(s.pPhrase, 'MSDS 2항 P문구에서 추출');
+      plain('\n6. 최하단: ※ 공급자 정보 ');
+      val(s.supplier, 'MSDS 1항에서 추출 — 회사명·주소·연락처·긴급연락처');
+      plain('\n\n[규칙]\n- GHS 표준 그림문자를 H분류에 맞춰 자동 선택·배치.\n- P문구가 많으면 대표 항목만 표지에 넣고 "※ 이외 예방조치 문구는 MSDS를 참조하시오"로 마무리.\n- 값이 주어진 항목은 그대로 쓰고, [대괄호] 항목만 MSDS에서 추출.\n- MSDS에 없는 내용은 임의로 채우지 않는다.\n- 결과는 이미지(JPG)로 출력하고, 사람이 검토·승인할 항목을 함께 안내한다.');
+    }
+    return segs;
+  }
+
+  renderVals() {
+    const s = this.state;
+    const isManage = s.mode === 'manage';
+    const isLabel = s.mode === 'label';
+
+    const fill = { color: '#16181d', whiteSpace: 'pre-wrap' };
+    const ph = { color: '#c8102e', fontStyle: 'italic' };
+    const cell = (v, t) => { const x = (v || '').trim(); return x ? { text: x, style: fill } : { text: t, style: ph }; };
+
+    const subN = s.name.trim(), subP = s.product.trim();
+    const pvName = subN ? { text: subN, style: { color: '#16181d' } } : { text: 'MSDS에서 추출', style: ph };
+    const pvProductSuffix = subP ? ' (' + subP + ')' : '';
+
+    const casT = s.cas.trim();
+    const pvCasManage = casT ? { text: 'CAS No. : ' + casT, style: { color: '#16181d' } } : { text: 'CAS No. : MSDS에서 추출', style: ph };
+
+    const selPictos = this.PICTOS.filter((k) => s.pictos[k]);
+
+    const btnBase = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', borderRadius: 999, whiteSpace: 'nowrap' };
+    const sel = { background: '#2b2d33', color: '#fff', border: '1px solid #2b2d33' };
+    const unsel = { background: '#fff', color: '#4a4f5a', border: '1px solid transparent' };
+    const dia = (on) => ({ width: 12, height: 12, border: '2px solid #c8102e', background: '#fff', transform: 'rotate(45deg)', borderRadius: '2px', opacity: on ? 1 : 0.4, flex: 'none' });
+
+    const set = (f) => this.set(f);
+
+    const canStart = s.files.length > 0;
+
+    return {
+      versionTag: isManage ? 'FORM v2.0 · 산안법 §114' : 'FORM v2.0 · 산안법 §110',
+      previewLabel: isManage ? '작업공정별 관리요령' : '물질경고표지',
+      isManage, isLabel,
+      name: s.name, product: s.product, content: s.content, cas: s.cas, signal: s.signal,
+      hazard: s.hazard, precaution: s.precaution, protective: s.protective, firstaid: s.firstaid, spill: s.spill,
+      hPhrase: s.hPhrase, pPhrase: s.pPhrase, supplier: s.supplier,
+
+      onName: set('name'), onProduct: set('product'), onContent: set('content'),
+      onCas: set('cas'), onSignal: set('signal'),
+      onHazard: set('hazard'), onPrecaution: set('precaution'), onProtective: set('protective'),
+      onFirstaid: set('firstaid'), onSpill: set('spill'),
+      onHPhrase: set('hPhrase'), onPPhrase: set('pPhrase'), onSupplier: set('supplier'),
+
+      toggleManage: () => this.setState({ mode: 'manage' }),
+      toggleLabel: () => this.setState({ mode: 'label' }),
+      manageBtnStyle: { ...btnBase, ...(isManage ? sel : unsel) },
+      labelBtnStyle: { ...btnBase, ...(isLabel ? sel : unsel) },
+      mDiaStyle: dia(isManage),
+      lDiaStyle: dia(isLabel),
+
+      openFile: () => this.fileEl && this.fileEl.click(),
+      onFileChange: (e) => { this.addFiles(e.target.files); e.target.value = ''; },
+      onDrop: (e) => { e.preventDefault(); this.addFiles(e.dataTransfer.files); },
+      onDragOver: (e) => e.preventDefault(),
+      setFileRef: (el) => { this.fileEl = el; },
+      filesView: s.files.map((f, i) => ({
+        name: f.name,
+        ext: f.ext.toUpperCase(),
+        tagStyle: { fontFamily: this.MONO, fontSize: 10, fontWeight: 700, color: '#fff', background: f.color, padding: '2px 6px', borderRadius: 2, flex: 'none' },
+        onRemove: () => this.removeFile(i),
+      })),
+
+      pictoList: this.PICTOS.map((l) => {
+        const on = !!s.pictos[l];
+        return {
+          label: l,
+          onClick: () => this.togglePicto(l),
+          chipStyle: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 13, border: on ? '1px solid #c8102e' : '1px solid #d6d3c9', background: on ? '#fbe9ec' : '#fff', color: '#16181d' },
+          diamondStyle: { width: 12, height: 12, border: '2px solid #c8102e', background: '#fff', transform: 'rotate(45deg)', opacity: on ? 1 : 0.4, flex: 'none' },
+        };
+      }),
+
+      pvName,
+      pvProductSuffix,
+      pvCasManage,
+      pvCasL: cell(s.cas, 'MSDS 추출'),
+      pvContentL: cell(s.content, 'MSDS 추출'),
+      pvHazard: cell(s.hazard, 'MSDS 2항에서 추출'),
+      pvPrecaution: cell(s.precaution, 'MSDS 7항에서 추출'),
+      pvProtective: cell(s.protective, 'MSDS 8항에서 추출'),
+      pvFirstaid: cell(s.firstaid, 'MSDS 4항에서 추출'),
+      pvSpill: cell(s.spill, 'MSDS 6항에서 추출'),
+      pvSupplier: cell(s.supplier, 'MSDS 1항에서 추출'),
+      pvHPhrase: cell(s.hPhrase, 'MSDS 2항 H문구에서 추출'),
+      pvPPhrase: cell(s.pPhrase, 'MSDS 2항 P문구에서 추출'),
+      pvPictos: selPictos,
+      pvHasPictos: selPictos.length > 0,
+      pvNoPictos: selPictos.length === 0,
+
+      canStart,
+      onStart: () => {
+        if (!canStart) return;
+        this.copyPrompt();
+        this.setState({ started: true });
+      },
+      closeStart: () => this.setState({ started: false }),
+      started: s.started,
+      startedCount: s.files.length,
+      startedFiles: s.files.map((f) => f.name).join(' · ') || '—',
+      startLabel: '데이터 추출 시작 →',
+      startHint: canStart ? '' : 'MSDS 파일 업로드 후 시작할 수 있습니다.',
+      startBtnStyle: canStart
+        ? { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', fontSize: 14, fontWeight: 700, borderRadius: 4, cursor: 'pointer', border: '1px solid #c8102e', background: '#c8102e', color: '#fff' }
+        : { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', fontSize: 14, fontWeight: 700, borderRadius: 4, cursor: 'not-allowed', border: '1px solid #d6d3c9', background: '#fff', color: '#b6b3a8' },
+
+      segments: this.buildSegments(),
+      setCodeRef: (el) => { this.codeEl = el; },
+      copyPrompt: () => this.copyPrompt(),
+      copyLabel: s.copied ? '복사됨 ✓' : '프롬프트 복사',
+      copyBtnStyle: {
+        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 13, fontWeight: 600, borderRadius: 4, cursor: 'pointer',
+        border: s.copied ? '1px solid #15803d' : '1px solid #2b2d33',
+        background: s.copied ? '#15803d' : '#2b2d33', color: '#fff',
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>
