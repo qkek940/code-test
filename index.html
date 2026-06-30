@@ -334,15 +334,24 @@ const EXT_COLOR = {pdf:'#b3261e',xls:'#15803d',xlsx:'#15803d',doc:'#1d4ed8',docx
 
 // GHS 표준 그림문자 — 빨간 마름모·흰 바탕·검은 심볼 (인라인 SVG, 외부 이미지 없음)
 const GHS_SYM = {
-'인화성':'<path d="M53 27c6 10-6 14 1 24 3-3 5-1 5 3 0 6-5 11-12 11-8 0-14-6-14-15 0-8 6-12 6-19 4 5 3 9 3 9 3-7-1-13 5-21z"/><rect x="34" y="71" width="32" height="4" rx="1"/>',
-'산화성':'<circle cx="50" cy="61" r="13" fill="none" stroke="#000" stroke-width="5"/><path d="M52 27c4 7-4 10 0 16 2-1 4 0 4 3 0 4-3 7-8 7-5 0-9-4-9-9 0-5 4-7 4-12 3 3 2 5 2 5 2-4 0-8 4-10z"/><rect x="33" y="75" width="34" height="4"/>',
-'폭발성':'<path d="M50 24l5 13 11-8-5 13 13 4-12 6 8 11-13-4-2 13-6-12-10 8 3-13-13-2 11-8-9-9 13 1z"/>',
-'고압가스':'<rect x="40" y="37" width="20" height="35" rx="10" fill="none" stroke="#000" stroke-width="5"/><rect x="46" y="29" width="8" height="9"/>',
-'부식성':'<path d="M29 58l12-5v6l-12 5z"/><path d="M29 70h15" stroke="#000" stroke-width="3" fill="none"/><path d="M34 33l8 15m-3-16l8 15" stroke="#000" stroke-width="3" fill="none"/><path d="M57 56h13v6l-13 2z"/><path d="M58 70h14" stroke="#000" stroke-width="3" fill="none"/><path d="M63 35l6 14m-1-15l6 14" stroke="#000" stroke-width="3" fill="none"/>',
-'급성독성':'<g stroke="#000" stroke-width="6" stroke-linecap="round"><line x1="37" y1="60" x2="63" y2="74"/><line x1="63" y1="60" x2="37" y2="74"/></g><path d="M50 30c-10 0-17 7-17 16 0 5 2 8 5 10v4c0 2 2 3 4 3h16c2 0 4-1 4-3v-4c3-2 5-5 5-10 0-9-7-16-17-16z"/><circle cx="44" cy="47" r="3.2" fill="#fff"/><circle cx="56" cy="47" r="3.2" fill="#fff"/><path d="M50 51l-3 6h6z" fill="#fff"/>',
+// 불꽃 + 바닥선
+'인화성':'<path d="M52 22c7 11-3 16 2 24 2-3 3-7 2-11 6 5 10 12 10 19 0 11-8 18-16 18-9 0-17-7-17-18 0-7 4-12 8-17 0 4 0 7 2 9 2-9 5-16 9-24z"/><rect x="34" y="73" width="32" height="4" rx="1"/>',
+// 원 위의 불꽃 + 바닥선
+'산화성':'<circle cx="50" cy="62" r="11" fill="none" stroke="#000" stroke-width="5"/><path d="M51 26c5 7-2 11 1 16 1-2 2-4 2-7 4 3 6 8 6 12 0 7-5 11-10 11s-10-4-10-11c0-5 3-7 5-10 0 3 0 4 1 5 1-6 2-11 4-16z"/><rect x="34" y="78" width="32" height="4" rx="1"/>',
+// 폭발(별 모양 폭발)
+'폭발성':'<path d="M50 23l4 13 10-9-4 14 14-4-11 10 14 4-15 2 7 11-13-6-3 12-4-12-13 6 7-11-15-2 14-4-11-10 14 4-4-14 10 9z"/>',
+// 가스 실린더
+'고압가스':'<rect x="41" y="35" width="18" height="39" rx="9" fill="none" stroke="#000" stroke-width="5"/><rect x="46" y="28" width="8" height="8"/><path d="M41 47h18" stroke="#000" stroke-width="3" fill="none"/>',
+// 부식(왼쪽 시험관→금속판, 오른쪽 시험관→손)
+'부식성':'<g transform="rotate(-28 34 34)"><rect x="27" y="31" width="15" height="6" rx="3"/></g><circle cx="36" cy="47" r="1.7"/><circle cx="37" cy="52" r="1.7"/><path d="M24 60h20v6h-20z"/><path d="M31 60l3 4 3-4z" fill="#fff"/><g transform="rotate(28 66 34)"><rect x="58" y="31" width="15" height="6" rx="3"/></g><circle cx="63" cy="47" r="1.7"/><circle cx="62" cy="52" r="1.7"/><path d="M56 63h16v5h-16z"/><rect x="57" y="59" width="3" height="5"/><rect x="62" y="58" width="3" height="6"/><rect x="67" y="59" width="3" height="5"/>',
+// 해골 + 교차 뼈
+'급성독성':'<g stroke="#000" stroke-width="6" stroke-linecap="round"><line x1="38" y1="60" x2="62" y2="74"/><line x1="62" y1="60" x2="38" y2="74"/></g><circle cx="38" cy="60" r="3.2"/><circle cx="62" cy="60" r="3.2"/><circle cx="38" cy="74" r="3.2"/><circle cx="62" cy="74" r="3.2"/><path d="M50 27c-10 0-17 7-17 16 0 6 3 9 6 11v3c0 2 2 4 4 4h14c2 0 4-2 4-4v-3c3-2 6-5 6-11 0-9-7-16-17-16z"/><circle cx="44" cy="44" r="3.6" fill="#fff"/><circle cx="56" cy="44" r="3.6" fill="#fff"/><path d="M50 48l-3 6h6z" fill="#fff"/>',
+// 느낌표
 '감탄부호':'<path d="M50 30c-5 0-8 3-7 8l2 17c0 3 2 5 5 5s5-2 5-5l2-17c1-5-2-8-7-8z"/><circle cx="50" cy="66" r="5.5"/>',
-'건강유해성':'<circle cx="50" cy="37" r="8"/><path d="M35 74c0-13 7-22 15-22s15 9 15 22z"/><path d="M50 51l2.4 6 6-2.4-2.4 6 6 2.4-6 2.4 2.4 6-6-2.4-2.4 6-2.4-6-6 2.4 2.4-6-6-2.4 6-2.4-2.4-6 6 2.4z" fill="#fff"/>',
-'환경유해성':'<path d="M27 47q5-6 10 0t10 0" fill="none" stroke="#000" stroke-width="3"/><path d="M35 66c6-6 18-6 25 0-7 6-19 6-25 0z"/><path d="M60 66l9-5v10z"/><circle cx="44" cy="64" r="2" fill="#fff"/><path d="M30 73v-15m0 6l-5-5m5 7l5-5" fill="none" stroke="#000" stroke-width="2.5"/>'
+// 사람 + 가슴의 흰 별(건강 유해)
+'건강유해성':'<circle cx="50" cy="34" r="8"/><path d="M36 74c0-12 6-23 14-23s14 11 14 23z"/><path d="M50 48l3 7 7-3-3 7 7 3-7 3 3 7-7-3-3 7-3-7-7 3 3-7-7-3 7-3-3-7 7 3z" fill="#fff"/>',
+// 죽은 나무 + 죽은 물고기 + 수면선
+'환경유해성':'<path d="M25 56h50" stroke="#000" stroke-width="2.5" fill="none"/><path d="M37 56V37m0 5l-7-6m7 9l7-7m-7 1l-6-5" fill="none" stroke="#000" stroke-width="2.5"/><path d="M45 67c6-5 16-5 22 0-6 5-16 5-22 0z"/><path d="M67 67l6-4v8z"/><circle cx="52" cy="65" r="1.8" fill="#fff"/>'
 };
 function ghsSVG(name,px){
   const s=GHS_SYM[name]||'';
