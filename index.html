@@ -40,6 +40,8 @@ input,select,textarea{font-family:var(--sans);}
 /* Banner */
 #banner{display:none;border:1px solid var(--ok);background:#f0f8f2;border-radius:5px;padding:14px 16px;margin-bottom:22px;gap:13px;align-items:flex-start;}
 #banner.show{display:flex;}
+#banner.err{border-color:var(--hazard);background:#fbe9ec;}
+#banner.err .bnr-icon{background:var(--hazard);}
 .bnr-icon{width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:none;}
 .bnr-close{border:none;background:none;cursor:pointer;color:var(--ink-soft);font-size:18px;line-height:1;padding:2px 4px;flex:none;}
 .bnr-t{font-weight:700;font-size:14px;color:var(--ink);}
@@ -158,7 +160,7 @@ textarea{min-height:64px;resize:vertical;line-height:1.5;}
   <div class="divider"></div>
 
   <div id="banner">
-    <div class="bnr-icon">✓</div>
+    <div id="bnr-icon" class="bnr-icon">✓</div>
     <div style="flex:1;min-width:0;">
       <div id="bnr-t" class="bnr-t"></div>
       <div id="bnr-d" class="bnr-d"></div>
@@ -307,7 +309,8 @@ const EXT_COLOR = {pdf:'#b3261e',xls:'#15803d',xlsx:'#15803d',doc:'#1d4ed8',docx
 let st = {
   mode:'manage', files:[], name:'', product:'', content:'', cas:'', signal:'위험',
   pictos:new Set(), hazard:'', precaution:'', protective:'', firstaid:'', spill:'',
-  hPhrase:'', pPhrase:'', supplier:'', copied:false, started:false
+  hPhrase:'', pPhrase:'', supplier:'', copied:false, started:false,
+  extracting:false, extractResult:null
 };
 
 function set(patch){ Object.assign(st, patch); render(); }
@@ -427,8 +430,23 @@ function buildSegs(){
   }).join('');
 }
 
+// id ↔ state key map for inputs (used for both listeners and value sync)
+const FIELD_INPUTS = [
+  ['f-name','name'],['f-product','product'],['f-content','content'],['f-cas','cas'],
+  ['f-hazard','hazard'],['f-precaution','precaution'],['f-protective','protective'],
+  ['f-firstaid','firstaid'],['f-spill','spill'],['f-hphrase','hPhrase'],
+  ['f-pphrase','pPhrase'],['f-supplier','supplier'],['f-signal','signal']
+];
+
 function render(){
   const isL = st.mode==='label';
+
+  // Sync input/select values from state (so AI-extracted values appear in the
+  // form). Only write when different to avoid disturbing the caret while typing.
+  FIELD_INPUTS.forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el && el.value!==st[key]) el.value=st[key];
+  });
 
   // Toggle
   document.getElementById('btn-manage').classList.toggle('on',!isL);
@@ -458,18 +476,33 @@ function render(){
   // Start button
   const canStart = st.files.length > 0;
   const bs = document.getElementById('btn-start');
-  bs.classList.toggle('on', canStart);
-  bs.disabled = !canStart;
+  bs.classList.toggle('on', canStart && !st.extracting);
+  bs.disabled = !canStart || st.extracting;
+  bs.textContent = st.extracting ? 'AI 추출 중…' : '데이터 추출 시작 →';
   bs.title = canStart ? '' : 'MSDS 파일 업로드 후 시작할 수 있습니다.';
 
-  // Banner
+  // Banner (AI 추출 결과)
   const bnr = document.getElementById('banner');
-  if(st.started){
+  const r = st.extractResult;
+  if(st.started && r){
     bnr.classList.add('show');
-    document.getElementById('bnr-t').textContent = `추출 프롬프트가 복사되었습니다 · MSDS 파일 ${st.files.length}개 준비됨`;
-    document.getElementById('bnr-d').textContent = `아래 순서로 추출을 시작하세요 — ① Claude Design 대화창 열기 → ② 복사된 프롬프트 붙여넣기 → ③ 업로드한 MSDS 파일 ${st.files.length}개를 함께 첨부 → ④ 전송. 비운 항목은 첨부 파일에서 추출되며, 없는 내용은 임의로 채우지 않습니다.`;
-    document.getElementById('bnr-f').textContent = '첨부 대상: ' + (st.files.map(f=>f.name).join(' · ') || '—');
-  } else { bnr.classList.remove('show'); }
+    bnr.classList.toggle('err', !r.ok);
+    document.getElementById('bnr-icon').textContent = r.ok ? '✓' : '!';
+    if(r.ok){
+      const n = r.filled.length;
+      document.getElementById('bnr-t').textContent = n
+        ? `AI 추출 완료 · ${n}개 항목을 채웠습니다 (PDF ${r.files}개 분석)`
+        : `AI 추출 완료 · 추가로 채울 빈 항목이 없습니다 (PDF ${r.files}개 분석)`;
+      document.getElementById('bnr-d').textContent = n
+        ? '추출된 값은 검토 후 수정하실 수 있습니다. 이미 입력하신 항목은 그대로 유지됩니다. 내용을 확인한 뒤 프롬프트를 복사하거나 양식을 사용하세요.'
+        : '문서에서 새로 추출할 빈 항목이 없습니다. 비워두고 싶은 항목은 프롬프트에서 "MSDS에서 추출" 지시로 남습니다.';
+      document.getElementById('bnr-f').textContent = n ? '채운 항목: ' + r.filled.join(' · ') : '';
+    } else {
+      document.getElementById('bnr-t').textContent = 'AI 추출에 실패했습니다';
+      document.getElementById('bnr-d').textContent = r.error;
+      document.getElementById('bnr-f').textContent = '';
+    }
+  } else { bnr.classList.remove('show'); bnr.classList.remove('err'); }
 
   // Copy button
   const bc = document.getElementById('btn-copy');
@@ -516,7 +549,7 @@ function addFiles(list){
     const ext=(name.split('.').pop()||'').toLowerCase();
     if(!allowed.has(ext)) return;
     if(next.some(f=>f.name===name)) return;
-    next.push({name,ext,color:EXT_COLOR[ext]||'#4a4f5a'});
+    next.push({name,ext,color:EXT_COLOR[ext]||'#4a4f5a',obj:file});
   });
   set({files:next});
 }
@@ -606,16 +639,104 @@ async function saveRecord(){
   }
 }
 
+// ── AI 추출 (Gemini) ─────────────────────────────────────────────
+// 업로드한 MSDS(PDF)를 Gemini로 읽어 비어 있는 입력 항목을 자동으로 채운다.
+// 키는 config.js의 window.GEMINI_API_KEY에서 읽는다(저장소에 커밋되지 않음).
+const EXTRACT_FIELDS = [
+  ['name','물질명'],['product','제품명'],['content','함유량'],['cas','CAS No.'],
+  ['hazard','유해성·위험성'],['precaution','취급상의 주의사항'],['protective','적절한 보호구'],
+  ['firstaid','응급조치요령'],['spill','사고 시 대처방법'],
+  ['hPhrase','H문구'],['pPhrase','P문구'],['supplier','공급자 정보']
+];
+const EXTRACT_SCHEMA = {
+  type:'object',
+  properties:{
+    name:{type:'string'}, product:{type:'string'}, content:{type:'string'}, cas:{type:'string'},
+    signal:{type:'string'}, pictos:{type:'array',items:{type:'string'}},
+    hazard:{type:'string'}, precaution:{type:'string'}, protective:{type:'string'},
+    firstaid:{type:'string'}, spill:{type:'string'},
+    hPhrase:{type:'string'}, pPhrase:{type:'string'}, supplier:{type:'string'}
+  }
+};
+const EXTRACT_INSTRUCTION =
+`첨부된 MSDS(물질안전보건자료) 문서를 읽고 아래 항목을 추출해 JSON으로만 응답하라.
+- 문서에 실제로 있는 내용만 채운다. 없으면 빈 문자열("")로 둔다. 임의로 지어내지 않는다.
+- name: 물질명(주성분). product: 제품명/상품명. content: 주성분 함유량(예 "95% 이상").
+- cas: 주성분 CAS No. signal: 신호어를 "위험" 또는 "경고" 중 하나로, 불명확하면 "".
+- pictos: 해당하는 GHS 그림문자를 다음 목록의 단어로만 배열에 담는다: ${PICTOS.join(', ')}. 없으면 빈 배열.
+- hazard: 유해성·위험성(2항). precaution: 취급상 주의사항(7항). protective: 적절한 보호구(8항).
+- firstaid: 응급조치요령(4항, 눈/피부/흡입/먹었을때). spill: 사고 시 대처방법(6항, 누출).
+- hPhrase: 유해·위험 문구(H문구, 코드+설명). pPhrase: 예방조치 문구(P문구, 대표 항목).
+- supplier: 공급자 정보(회사명·주소·연락처·긴급연락처).
+긴 항목은 핵심을 간결히 요약한다.`;
+
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(',')[1]||'');
+    r.onerror=()=>rej(new Error('파일을 읽을 수 없습니다'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function extractFromMSDS(){
+  const key=window.GEMINI_API_KEY;
+  const model=window.GEMINI_MODEL||'gemini-2.5-flash';
+  if(!key||key==='YOUR_GEMINI_API_KEY'){
+    set({started:true,extractResult:{ok:false,error:'config.js에 GEMINI_API_KEY가 설정되지 않았습니다. config.example.js를 복사해 config.js를 만들고 키를 넣으세요.'}});
+    return;
+  }
+  const pdfs=st.files.filter(f=>f.ext==='pdf'&&f.obj);
+  if(!pdfs.length){
+    set({started:true,extractResult:{ok:false,error:'자동 추출은 PDF 파일만 지원합니다. (xlsx·docx·pptx 등은 Gemini가 직접 읽을 수 없어 PDF로 변환 후 업로드하세요.)'}});
+    return;
+  }
+  set({extracting:true,started:false,extractResult:null});
+  try{
+    const parts=[{text:EXTRACT_INSTRUCTION}];
+    for(const f of pdfs){
+      const b64=await fileToBase64(f.obj);
+      parts.push({inlineData:{mimeType:'application/pdf',data:b64}});
+    }
+    const body={contents:[{role:'user',parts}],generationConfig:{responseMimeType:'application/json',responseSchema:EXTRACT_SCHEMA,temperature:0}};
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!resp.ok){
+      let msg='HTTP '+resp.status;
+      try{const j=await resp.json();if(j.error&&j.error.message)msg=j.error.message;}catch(e){}
+      throw new Error(msg);
+    }
+    const data=await resp.json();
+    const txt=data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+    let ex;
+    try{ex=JSON.parse(txt);}catch(e){throw new Error('AI 응답을 해석하지 못했습니다.');}
+
+    // 비어 있는 항목만 채운다 (사용자가 직접 입력한 값은 보존).
+    const patch={}; const filled=[];
+    EXTRACT_FIELDS.forEach(([k,label])=>{
+      const v=(ex[k]||'').trim();
+      if(v && !st[k].trim()){ patch[k]=v; filled.push(label); }
+    });
+    if((ex.signal==='위험'||ex.signal==='경고')){ patch.signal=ex.signal; }
+    if(Array.isArray(ex.pictos)&&ex.pictos.length&&st.pictos.size===0){
+      const sel=new Set(ex.pictos.filter(p=>PICTOS.includes(p)));
+      if(sel.size){ patch.pictos=sel; filled.push('GHS 그림문자'); }
+    }
+    set({...patch,extracting:false,started:true,extractResult:{ok:true,filled,files:pdfs.length}});
+    saveRecord();
+  }catch(e){
+    set({extracting:false,started:true,extractResult:{ok:false,error:(e&&e.message?e.message:String(e))}});
+  }
+}
+
 // Buttons
 document.getElementById('btn-start').addEventListener('click',()=>{
-  if(!st.files.length) return;
-  copyText();
-  set({started:true});
-  saveRecord();
+  if(!st.files.length||st.extracting) return;
+  extractFromMSDS();
 });
 document.getElementById('bnr-close').addEventListener('click',()=>{
   document.getElementById('bnr-save').className='bnr-save';
-  set({started:false});
+  set({started:false,extractResult:null});
 });
 document.getElementById('btn-copy').addEventListener('click',copyText);
 
@@ -633,6 +754,9 @@ document.getElementById('f-signal').addEventListener('change',e=>set({signal:e.t
 // Initial render
 render();
 </script>
+
+<!-- Local config: Gemini API key (gitignored; see config.example.js) -->
+<script src="config.js"></script>
 
 <!-- Firebase: persist each submission to Firestore -->
 <script type="module">

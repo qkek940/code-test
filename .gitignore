@@ -1,2 +1,5 @@
 # Claude Design handoff bundle internals (not part of the deliverable)
 project/.thumbnail
+
+# Local secrets — never commit
+config.js
