@@ -303,6 +303,10 @@ textarea{min-height:64px;resize:vertical;line-height:1.5;}
 
 </div>
 <script>
+// 빌드 식별자 — 콘솔에서 이 줄이 보이면 AI 추출 버전입니다.
+const BUILD = 'ai-extract-2026-06-30d';
+console.info('[MSDS Builder] build:', BUILD, '— Gemini AI 추출 활성화');
+
 // ── 단독 실행용 설정 ──────────────────────────────────────────────
 // 아래 따옴표 안에 본인 Gemini API 키를 넣으면 index.html 하나로 동작합니다.
 // (config.js 파일이 같은 폴더에 있으면 그 값이 우선 적용됩니다.)
