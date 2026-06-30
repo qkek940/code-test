@@ -139,6 +139,20 @@ textarea{min-height:64px;resize:vertical;line-height:1.5;}
 .code-blk .emp{color:#6b7280;font-style:italic;}
 .use-note{margin-top:14px;font-size:12px;color:var(--ink-soft);line-height:1.65;background:#fbfaf5;border:1px solid var(--line);border-radius:4px;padding:12px 14px;}
 .use-note b{color:var(--ink);}
+.btn-print{margin-left:8px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:4px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;flex:none;}
+.btn-print:hover{background:#f3f1e9;}
+.btn-print:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* 인쇄: 선택된 양식 시트만 A4로 출력 */
+#print-root{display:none;}
+@media print{
+  @page{size:A4 portrait;margin:12mm;}
+  html,body{background:#fff;}
+  .page{display:none !important;}
+  #print-root{display:block !important;}
+  #print-root .sheet{box-shadow:none;border:1px solid #000;font-size:13px;width:100%;}
+  #print-root .pt td,#print-root .ll-pt td{padding:9px 10px;}
+}
 </style>
 </head>
 <body>
@@ -278,6 +292,7 @@ textarea{min-height:64px;resize:vertical;line-height:1.5;}
         <span class="badge">2</span>
         <span class="card-title">미리보기</span>
         <span id="preview-mode-label" class="card-hint">작업공정별 관리요령</span>
+        <button id="btn-print" class="btn-print">🖶 인쇄</button>
       </div>
       <div class="prev-bg">
         <div id="preview-manage" class="sheet"></div>
@@ -302,6 +317,7 @@ textarea{min-height:64px;resize:vertical;line-height:1.5;}
   </div>
 
 </div>
+<div id="print-root"></div>
 <script>
 // 빌드 식별자 — 콘솔에서 이 줄이 보이면 AI 추출 버전입니다.
 const BUILD = 'ai-extract-2026-06-30d';
@@ -318,19 +334,19 @@ const EXT_COLOR = {pdf:'#b3261e',xls:'#15803d',xlsx:'#15803d',doc:'#1d4ed8',docx
 
 // GHS 표준 그림문자 — 빨간 마름모·흰 바탕·검은 심볼 (인라인 SVG, 외부 이미지 없음)
 const GHS_SYM = {
-'인화성':'<path d="M53 28c5 9-5 13 0 22 3-2 6 0 6 4 0 6-5 10-11 10-8 0-13-6-13-14 0-7 5-11 5-17 4 4 3 7 3 7 3-6-1-11 5-12z"/><rect x="35" y="71" width="30" height="4"/>',
+'인화성':'<path d="M53 27c6 10-6 14 1 24 3-3 5-1 5 3 0 6-5 11-12 11-8 0-14-6-14-15 0-8 6-12 6-19 4 5 3 9 3 9 3-7-1-13 5-21z"/><rect x="34" y="71" width="32" height="4" rx="1"/>',
 '산화성':'<circle cx="50" cy="61" r="13" fill="none" stroke="#000" stroke-width="5"/><path d="M52 27c4 7-4 10 0 16 2-1 4 0 4 3 0 4-3 7-8 7-5 0-9-4-9-9 0-5 4-7 4-12 3 3 2 5 2 5 2-4 0-8 4-10z"/><rect x="33" y="75" width="34" height="4"/>',
 '폭발성':'<path d="M50 24l5 13 11-8-5 13 13 4-12 6 8 11-13-4-2 13-6-12-10 8 3-13-13-2 11-8-9-9 13 1z"/>',
 '고압가스':'<rect x="40" y="37" width="20" height="35" rx="10" fill="none" stroke="#000" stroke-width="5"/><rect x="46" y="29" width="8" height="9"/>',
 '부식성':'<path d="M29 58l12-5v6l-12 5z"/><path d="M29 70h15" stroke="#000" stroke-width="3" fill="none"/><path d="M34 33l8 15m-3-16l8 15" stroke="#000" stroke-width="3" fill="none"/><path d="M57 56h13v6l-13 2z"/><path d="M58 70h14" stroke="#000" stroke-width="3" fill="none"/><path d="M63 35l6 14m-1-15l6 14" stroke="#000" stroke-width="3" fill="none"/>',
 '급성독성':'<g stroke="#000" stroke-width="6" stroke-linecap="round"><line x1="37" y1="60" x2="63" y2="74"/><line x1="63" y1="60" x2="37" y2="74"/></g><path d="M50 30c-10 0-17 7-17 16 0 5 2 8 5 10v4c0 2 2 3 4 3h16c2 0 4-1 4-3v-4c3-2 5-5 5-10 0-9-7-16-17-16z"/><circle cx="44" cy="47" r="3.2" fill="#fff"/><circle cx="56" cy="47" r="3.2" fill="#fff"/><path d="M50 51l-3 6h6z" fill="#fff"/>',
-'감탄부호':'<rect x="45" y="30" width="10" height="27" rx="3"/><circle cx="50" cy="65" r="5.5"/>',
+'감탄부호':'<path d="M50 30c-5 0-8 3-7 8l2 17c0 3 2 5 5 5s5-2 5-5l2-17c1-5-2-8-7-8z"/><circle cx="50" cy="66" r="5.5"/>',
 '건강유해성':'<circle cx="50" cy="37" r="8"/><path d="M35 74c0-13 7-22 15-22s15 9 15 22z"/><path d="M50 51l2.4 6 6-2.4-2.4 6 6 2.4-6 2.4 2.4 6-6-2.4-2.4 6-2.4-6-6 2.4 2.4-6-6-2.4 6-2.4-2.4-6 6 2.4z" fill="#fff"/>',
 '환경유해성':'<path d="M27 47q5-6 10 0t10 0" fill="none" stroke="#000" stroke-width="3"/><path d="M35 66c6-6 18-6 25 0-7 6-19 6-25 0z"/><path d="M60 66l9-5v10z"/><circle cx="44" cy="64" r="2" fill="#fff"/><path d="M30 73v-15m0 6l-5-5m5 7l5-5" fill="none" stroke="#000" stroke-width="2.5"/>'
 };
 function ghsSVG(name,px){
   const s=GHS_SYM[name]||'';
-  return `<svg viewBox="0 0 100 100" width="${px}" height="${px}" style="display:block"><polygon points="50,3 97,50 50,97 3,50" fill="#fff" stroke="#c8102e" stroke-width="7" stroke-linejoin="miter"/>${s}</svg>`;
+  return `<svg viewBox="0 0 100 100" width="${px}" height="${px}" style="display:block"><g transform="rotate(45 50 50)"><rect x="12.5" y="12.5" width="75" height="75" rx="9" fill="#ee3124"/><rect x="22" y="22" width="56" height="56" rx="4" fill="#fff"/></g>${s}</svg>`;
 }
 
 let st = {
@@ -811,6 +827,18 @@ document.getElementById('bnr-close').addEventListener('click',()=>{
   set({started:false,extractResult:null});
 });
 document.getElementById('btn-copy').addEventListener('click',copyText);
+
+// 인쇄 — 현재 선택된 양식 시트만 복제해 A4로 출력
+document.getElementById('btn-print').addEventListener('click',()=>{
+  const active = st.mode==='label' ? document.getElementById('preview-label') : document.getElementById('preview-manage');
+  const root=document.getElementById('print-root');
+  root.innerHTML='';
+  const clone=active.cloneNode(true);
+  clone.style.display='block';
+  root.appendChild(clone);
+  window.print();
+});
+window.addEventListener('afterprint',()=>{ document.getElementById('print-root').innerHTML=''; });
 
 // Form fields
 [['f-name','name'],['f-product','product'],['f-content','content'],
