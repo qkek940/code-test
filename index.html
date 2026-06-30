@@ -680,6 +680,10 @@ function fileToBase64(file){
 }
 
 async function extractFromMSDS(){
+  if(location.protocol==='file:'){
+    set({started:true,extractResult:{ok:false,error:'로컬 파일(file://)로 열면 브라우저가 외부 API 호출을 차단합니다. 동봉한 실행 스크립트(Mac: run-mac.command / Windows: run-windows.bat)를 더블클릭하거나, 터미널에서 "python3 -m http.server 8000" 실행 후 http://localhost:8000/index.html 로 여세요.'}});
+    return;
+  }
   const key=window.GEMINI_API_KEY;
   const model=window.GEMINI_MODEL||'gemini-2.5-flash';
   if(!key||key==='YOUR_GEMINI_API_KEY'){
@@ -725,7 +729,11 @@ async function extractFromMSDS(){
     set({...patch,extracting:false,started:true,extractResult:{ok:true,filled,files:pdfs.length}});
     saveRecord();
   }catch(e){
-    set({extracting:false,started:true,extractResult:{ok:false,error:(e&&e.message?e.message:String(e))}});
+    let msg=e&&e.message?e.message:String(e);
+    if(/Failed to fetch|NetworkError|load failed/i.test(msg)){
+      msg='네트워크 호출이 차단되었습니다. ① 로컬 서버(http://localhost)에서 열었는지 ② 인터넷 연결 ③ 키의 도메인(HTTP 리퍼러) 제한 설정을 확인하세요. (file:// 직접 열기로는 불가합니다.)';
+    }
+    set({extracting:false,started:true,extractResult:{ok:false,error:msg}});
   }
 }
 
